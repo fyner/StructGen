@@ -1,6 +1,8 @@
 {
   "app": {
-    "title": "StructGen"
+    "title": "StructGen",
+    "languageName": "Lietuvių",
+    "languageCode": "lt"
   },
   "nav": {
     "settings": "Nustatymai",
@@ -13,7 +15,7 @@
     "statusTitle": "Statusas",
     "statusIdle": "Pasiruošęs generuoti struktūrą.",
     "statusNoRoot": "Pirmiausia nustatyk šakninį katalogą nustatymuose.",
-    "statusSuccess": "Sukurta katalogų: {dirs}, failų: {files}. Praleista: {skipped}.",
+    "statusSuccess": "Sukurta 📁: {createdDirs} 📄: {createdFiles} | Praleista 📁: {skippedDirs} 📄: {skippedFiles}",
     "statusError": "Įvyko klaida generuojant struktūrą.",
     "previewEmpty": "Įvesk struktūros aprašą kairėje, kad matytum jos peržiūrą čia.",
     "themeLight": "Šviesi tema",
@@ -21,7 +23,7 @@
     "charCountLabel": "Simboliai: {used} / {max}"
   },
   "settings": {
-    "windowTitle": "StructGen – Nustatymai",
+    "windowTitle": "Nustatymai",
     "rootDirLabel": "Šakninė vieta (root), kur bus generuojami katalogai ir failai",
     "rootDirPlaceholder": "Pasirink katalogą...",
     "chooseRootButton": "Pasirinkti katalogą",
@@ -33,8 +35,8 @@
     "saveError": "Nepavyko išsaugoti nustatymų."
   },
   "info": {
-    "title": "Kaip naudoti StructGen",
-    "body": "StructGen iš paprasto teksto aprašo sukuria katalogų ir failų struktūrą pasirinktoje vietoje.\n\n1. Eilučių principas\n- Kiekviena eilutė aprašo vieną vietą struktūroje.\n- Kairėje iki dvitaškio „:“ – katalogų kelias.\n- Dešinėje po dvitaškio – failų sąrašas tame kelyje.\n\n2. Katalogų kelias\n- Katalogai atskiriami \"/\" simboliu.\n- Pirmas segmentas – viršutinis katalogas, toliau – vidiniai.\n- Pvz.: Pro/etc reiškia „Pro“ ir jame esantį „etc“.\n\n3. Failų sąrašas\n- Failai atskiriami kableliais.\n- Tarpai aplink pavadinimus ignoruojami.\n- Pvz.: index.html, main.css\n\n4. Pilnas pavyzdys\nPro/etc: index.html, main.css\nPro/js: main.js\n\nKą tai padarys?\n- Sukurs katalogą „Pro“.\n- Jo viduje: „etc“ ir „js“ katalogus.\n- „etc“ viduje: index.html, main.css.\n- „js“ viduje: main.js.\n\nSvarbu\n- Viskas visada kuriama tik pasirinkto root katalogo viduje.\n- Bandymai išeiti už root ribų yra ignoruojami (skaičiuojami kaip „Praleista“)."
+    "title": "Kaip naudoti",
+    "body": "StructGen leidžia greitai sukurti katalogų ir failų struktūrą iš paprasto teksto aprašo. Tiesiog įveskite struktūros aprašą, ir programa automatiškai sukurs visus katalogus ir failus pasirinktoje vietoje.\n\n⚠️ Svarbu\n- Viskas visada kuriama tik pasirinkto šakninio katalogo viduje.\n- Bandymai išeiti už šakninio katalogo ribų yra ignoruojami (skaičiuojami kaip \"Praleista\").\n- Jei katalogas ar failas jau egzistuoja, jis neperrašomas (skaičiuojamas kaip \"Praleista\").\n- Tuščios eilutės ignoruojamos.\n\n📝 Veikimo principas\n- Kiekviena eilutė aprašo vieną vietą struktūroje.\n- Formatas: katalogų_kelias: failų_sąrašas\n- Kairėje iki dvitaškio \":\" – katalogų kelias.\n- Dešinėje po dvitaškio – failų sąrašas (atskiriami kableliais).\n- Katalogai atskiriami \"/\" simboliu.\n- Galite sukurti bet kokio gylio struktūrą.\n\n✨ Visi įmanomi variantai\n\nVariantas 1: Tik failas (root lygyje)\n: README.md\n\nVariantas 2: Tik katalogas (be failų)\nsrc/components\n\nVariantas 3: Katalogas su failais\nsrc/components: Button.jsx, Card.jsx\n\nVariantas 4: Keli failai root lygyje\n: README.md, .gitignore, package.json\n\nVariantas 5: Gilus katalogas su failais\nsrc/components/ui/buttons: PrimaryButton.tsx, SecondaryButton.tsx\n\nVariantas 6: Sudėtingesnė struktūros pavyzdys\nsrc/components: Button.jsx, Card.jsx\nsrc/utils: helpers.js, constants.js\npublic: index.html, favicon.ico\nconfig: settings.json"
   },
   "errors": {
     "noRoot": "Root katalogas nenustatytas.",
