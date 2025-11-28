@@ -5,10 +5,6 @@
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Tech](https://img.shields.io/badge/Tech-Electron%20%7C%20Node.js-4a6cf7.svg)
 
-🇱🇹 [Lietuvių](#lietuvių-kalba) · 🇬🇧 [English](#english)
-
----
-
 ### Quick navigation
 
 - 🇱🇹 [Apžvalga](#lietuvių-kalba) · [Struktūros formatas](#struktūros-formatas) · [Validacija](#validacija) · [Naudojimas](#naudojimas)
