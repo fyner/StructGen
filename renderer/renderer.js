@@ -753,15 +753,18 @@ function renderTreeBranch(name, node, parentUl, existingPaths, currentPath, inva
   }
 }
 
-async function renderStructurePreview() {
+async function renderStructurePreview(force = false) {
   const previewEl = document.getElementById('structure-preview');
   const inputEl = document.getElementById('structure-input');
   if (!previewEl || !inputEl) return;
 
   const currentInput = inputEl.value;
   
-  // If the input hasn't changed, avoid unnecessary re‑render work
-  if (currentInput === lastRenderedInput) {
+  // If the input hasn't changed and this is not an explicit re-render request,
+  // avoid unnecessary work. When `force === true` (e.g. after validation
+  // results change), we still rebuild the tree so that invalid highlights
+  // stay in sync.
+  if (!force && currentInput === lastRenderedInput) {
     return;
   }
 
@@ -906,6 +909,11 @@ async function runValidationDebounced() {
           validationSummaryEl.textContent = '';
         }
       }
+
+      // Re-render the structure preview so that invalid directory/file
+      // highlights reflect the latest validation result, even if the text
+      // itself has not changed since the last render.
+      await renderStructurePreview(true);
     } catch (err) {
       console.error('validate-structure failed', err);
     }

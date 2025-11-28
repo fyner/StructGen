@@ -1,6 +1,6 @@
 ## StructGen
 
-![Version](https://img.shields.io/badge/version-1.2.1-orange.svg)
+![Version](https://img.shields.io/badge/version-1.2.2-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Tech](https://img.shields.io/badge/Tech-Electron%20%7C%20Node.js-4a6cf7.svg)

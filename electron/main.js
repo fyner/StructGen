@@ -185,7 +185,17 @@ ipcMain.handle('validate-structure', (event, { input, rootDir }) => {
     console.error('validate-structure failed', err);
     return {
       isValid: false,
-      errors: [],
+      // Return a synthetic error entry so that callers can surface a clear
+      // validation failure instead of silently proceeding with an empty set.
+      errors: [
+        {
+          code: 'INTERNAL_VALIDATION_ERROR',
+          messageKey: 'generic',
+          where: 'internal',
+          line: null,
+          segment: null
+        }
+      ],
       parsed: [],
       lines: []
     };

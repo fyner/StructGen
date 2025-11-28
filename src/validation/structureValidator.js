@@ -172,6 +172,7 @@ function validateStructureInput(raw, options = {}) {
       // Only files at root (no directory path)
       if (!pathPart && files.length > 0) {
         files.forEach((fileName) => {
+          // Per-file naming rules (characters, reserved names, etc.)
           errors.push(
             ...checkSegmentName(fileName, {
               where: 'file',
@@ -179,6 +180,26 @@ function validateStructureInput(raw, options = {}) {
               line: lineNumber
             })
           );
+
+          // Optional: full path length check for files directly under the root.
+          if (rootDir && maxFullPathLength > 0) {
+            const relativeFile = fileName;
+            const targetFile = path.join(rootDir, fileName);
+            if (targetFile.length > maxFullPathLength) {
+              errors.push({
+                code: 'PATH_TOO_LONG_FILE',
+                messageKey: 'pathTooLongFile',
+                where: 'file',
+                directory: null,
+                line: lineNumber,
+                segment: fileName,
+                relativePath: relativeFile,
+                fullPath: targetFile,
+                length: targetFile.length,
+                maxLength: maxFullPathLength
+              });
+            }
+          }
         });
         return;
       }
