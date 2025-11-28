@@ -19,6 +19,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // - checkPathsExist: used by the preview to highlight already existing paths
   // - generateStructure: actually creates folders/files on disk
   checkPathsExist: (data) => ipcRenderer.invoke('check-paths-exist', data),
-  generateStructure: (data) => ipcRenderer.invoke('generate-structure', data)
+  generateStructure: (data) => ipcRenderer.invoke('generate-structure', data),
+
+  // Validation helper – runs the same validation logic as the generator,
+  // but without touching the file system. Used for soft, real-time feedback.
+  // We also forward the current root directory so that path-length rules
+  // can take the full `root + relative` path into account.
+  validateStructure: (input, rootDir) => ipcRenderer.invoke('validate-structure', { input, rootDir })
 });
 

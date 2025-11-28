@@ -36,12 +36,31 @@
   },
   "info": {
     "title": "Kaip naudoti",
-    "body": "StructGen leidžia greitai sukurti katalogų ir failų struktūrą iš paprasto teksto aprašo. Tiesiog įveskite struktūros aprašą, ir programa automatiškai sukurs visus katalogus ir failus pasirinktoje vietoje.\n\n⚠️ Svarbu\n- Viskas visada kuriama tik pasirinkto šakninio katalogo viduje.\n- Bandymai išeiti už šakninio katalogo ribų yra ignoruojami (skaičiuojami kaip \"Praleista\").\n- Jei katalogas ar failas jau egzistuoja, jis neperrašomas (skaičiuojamas kaip \"Praleista\").\n- Tuščios eilutės ignoruojamos.\n\n📝 Veikimo principas\n- Kiekviena eilutė aprašo vieną vietą struktūroje.\n- Formatas: katalogų_kelias: failų_sąrašas\n- Kairėje iki dvitaškio \":\" – katalogų kelias.\n- Dešinėje po dvitaškio – failų sąrašas (atskiriami kableliais).\n- Katalogai atskiriami \"/\" simboliu.\n- Galite sukurti bet kokio gylio struktūrą.\n\n✨ Visi įmanomi variantai\n\nVariantas 1: Tik failas (root lygyje)\n: README.md\n\nVariantas 2: Tik katalogas (be failų)\nsrc/components\n\nVariantas 3: Katalogas su failais\nsrc/components: Button.jsx, Card.jsx\n\nVariantas 4: Keli failai root lygyje\n: README.md, .gitignore, package.json\n\nVariantas 5: Gilus katalogas su failais\nsrc/components/ui/buttons: PrimaryButton.tsx, SecondaryButton.tsx\n\nVariantas 6: Sudėtingesnė struktūros pavyzdys\nsrc/components: Button.jsx, Card.jsx\nsrc/utils: helpers.js, constants.js\npublic: index.html, favicon.ico\nconfig: settings.json"
+    "body": "StructGen yra paprasta priemonė, kuri iš teksto automatiškai sukuria katalogų ir failų medį pasirinktoje vietoje. Vietoj to, kad katalogus kurtum ranka, tiesiog aprašai struktūrą tekstu – programa ją sugeneruoja už tave.\n\n⚠️ Bendros taisyklės\n- Viskas visada kuriama tik pasirinkto šakninio katalogo (root) viduje.\n- Bandymai išeiti už root ribų ignoruojami (skaičiuojami kaip \"Praleista\").\n- Jei katalogas ar failas jau egzistuoja, jis neperrašomas (skaičiuojamas kaip \"Praleista\").\n- Tuščios eilutės struktūros apraše ignoruojamos.\n\n📂 Struktūros formatas\n- Kiekviena nauja eilutė aprašo vieną vietą struktūroje.\n- Bendras formatas: katalogų_kelias: failų_sąrašas\n- Kairė pusė iki dvitaškio \":\" – katalogų kelias (gali būti tuščias, jei failai kuriami pačiame root lygyje).\n- Dešinė pusė po dvitaškio – failų sąrašas, atskirtas kableliais.\n- Katalogai keliuose atskiriami \"/\" simboliu (pvz., src/components/ui).\n- Gali būti eilutė tik su katalogu (be dvitaškio) – tada sukuriamas tik katalogas be failų.\n\n🎯 Vardų taisyklės (Windows)\n- Visi katalogų ir failų pavadinimai tikrinami pagal Windows taisykles.\n- Negalima naudoti simbolių: < > : \\\" / \\\\ | ? * ir valdymo simbolių (0–31).\n- Negalima naudoti rezervuotų pavadinimų: CON, PRN, AUX, NUL, COM1–COM9, LPT1–LPT9 ir pan.\n- Pavadinimas negali baigtis tarpu arba tašku.\n- Pavadinimai \".\" ir \"..\" negali būti naudojami kaip katalogų ar failų vardai.\n- Vieno katalogo arba failo pavadinimo maksimalus ilgis – 255 simboliai.\n\n✨ Pavyzdžiai\n\nPavyzdys 1: Vienas failas root lygyje\n: README.md\n\nPavyzdys 2: Tik katalogas (be failų)\nsrc/components\n\nPavyzdys 3: Katalogas su keliais failais\nsrc/components: Button.jsx, Card.jsx\n\nPavyzdys 4: Keli failai root lygyje\n: README.md, .gitignore, package.json\n\nPavyzdys 5: Gilus katalogas su failais\nsrc/components/ui/buttons: PrimaryButton.tsx, SecondaryButton.tsx\n\nPavyzdys 6: Sudėtingesnė struktūra\nsrc/components: Button.jsx, Card.jsx\nsrc/utils: helpers.js, constants.js\npublic: index.html, favicon.ico\nconfig: settings.json",
+    "exampleInputLabel": "Įvestis",
+    "examplePreviewLabel": "Peržiūra"
   },
   "errors": {
     "noRoot": "Root katalogas nenustatytas.",
     "cannotWriteOutsideRoot": "Negalima generuoti už pasirinkto root ribų.",
     "generic": "Įvyko nežinoma klaida."
+  },
+  "validation": {
+    "invalidDirChar": "Katalogo pavadinime naudojami Windows neleidžiami simboliai.",
+    "invalidFileChar": "Failo pavadinime naudojami Windows neleidžiami simboliai.",
+    "reservedDirName": "Katalogui naudojamas Windows rezervuotas pavadinimas (pvz., CON, PRN, NUL, COM1, LPT1 ir pan.).",
+    "reservedFileName": "Failui naudojamas Windows rezervuotas pavadinimas (pvz., CON, PRN, NUL, COM1, LPT1 ir pan.).",
+    "trailingDotOrSpaceDir": "Katalogo pavadinimas negali baigtis tarpu ar tašku.",
+    "trailingDotOrSpaceFile": "Failo pavadinimas negali baigtis tarpu ar tašku.",
+    "dotSegmentDirNotAllowed": "Simboliai \".\" ir \"..\" negali būti naudojami kaip katalogų pavadinimai.",
+    "dotSegmentFileNotAllowed": "Simboliai \".\" ir \"..\" negali būti naudojami kaip failų pavadinimai.",
+    "segmentDirTooLong": "Katalogo pavadinimas per ilgas. Maksimalus leidžiamas ilgis – 255 simboliai.",
+    "segmentFileTooLong": "Failo pavadinimas per ilgas. Maksimalus leidžiamas ilgis – 255 simboliai.",
+    "pathTooLongDir": "Pilnas katalogo kelias per ilgas ir viršija Windows kelio ilgio ribą.",
+    "pathTooLongFile": "Pilnas failo kelias per ilgas ir viršija Windows kelio ilgio ribą.",
+    "lineLabel": "eilutė",
+    "summaryErrors": "klaidos",
+    "generic": "Struktūros apraše yra neteisingų katalogų arba failų pavadinimų."
   }
 }
 

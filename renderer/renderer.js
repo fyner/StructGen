@@ -77,6 +77,13 @@ const MAX_INPUT_CHARS = 1000;
 // Track last rendered input value so we do not re‑render the preview
 // when the text has not actually changed.
 let lastRenderedInput = '';
+// Last known validation result – used for soft, real-time feedback.
+let currentValidation = {
+  isValid: true,
+  errors: []
+};
+// Debounce handle for validation calls.
+let validationTimeoutId = null;
 
 function formatTemplate(template, values) {
   return template.replace(/\{(\w+)\}/g, (_, key) => {
@@ -208,6 +215,7 @@ function applyTranslations() {
   const headerLangMenu = document.getElementById('header-language-menu');
   const themeToggleBtn = document.getElementById('theme-toggle');
   const charCountEl = document.getElementById('char-count');
+  const validationSummaryEl = document.getElementById('validation-summary');
 
   if (inputLabelEl) inputLabelEl.textContent = translations.main.inputLabel;
   // We intentionally keep the textarea placeholder empty for a cleaner look
@@ -441,8 +449,10 @@ function applyTranslations() {
           
           if (shouldClose) {
             const exampleText = exampleLines.join('\n');
-            htmlContent += `<div class="info-example-input">${exampleText}</div>`;
-            htmlContent += `<div class="info-example-preview">${renderStructurePreview(exampleText)}</div></div>`;
+            const inputLabel = (translations.info && translations.info.exampleInputLabel) || 'Įvestis';
+            const previewLabel = (translations.info && translations.info.examplePreviewLabel) || 'Peržiūra';
+            htmlContent += `<div class="info-example-input" data-label="${inputLabel}">${exampleText}</div>`;
+            htmlContent += `<div class="info-example-preview" data-label="${previewLabel}">${renderStructurePreview(exampleText)}</div></div>`;
             exampleLines = [];
             inExample = false;
           }
@@ -462,8 +472,10 @@ function applyTranslations() {
         // If we were inside an example, close it before starting the new section
         if (inExample && exampleLines.length > 0) {
           const exampleText = exampleLines.join('\n');
-          htmlContent += `<div class="info-example-input">${exampleText}</div>`;
-          htmlContent += `<div class="info-example-preview">${renderStructurePreview(exampleText)}</div></div>`;
+          const inputLabel = (translations.info && translations.info.exampleInputLabel) || 'Įvestis';
+          const previewLabel = (translations.info && translations.info.examplePreviewLabel) || 'Peržiūra';
+          htmlContent += `<div class="info-example-input" data-label="${inputLabel}">${exampleText}</div>`;
+          htmlContent += `<div class="info-example-preview" data-label="${previewLabel}">${renderStructurePreview(exampleText)}</div></div>`;
           exampleLines = [];
           inExample = false;
         }
@@ -529,8 +541,10 @@ function applyTranslations() {
         // Start of a bullet list item; close any open example block first
         if (inExample && exampleLines.length > 0) {
           const exampleText = exampleLines.join('\n');
-          htmlContent += `<div class="info-example-input">${exampleText}</div>`;
-          htmlContent += `<div class="info-example-preview">${renderStructurePreview(exampleText)}</div></div>`;
+          const inputLabel = (translations.info && translations.info.exampleInputLabel) || 'Įvestis';
+          const previewLabel = (translations.info && translations.info.examplePreviewLabel) || 'Peržiūra';
+          htmlContent += `<div class="info-example-input" data-label="${inputLabel}">${exampleText}</div>`;
+          htmlContent += `<div class="info-example-preview" data-label="${previewLabel}">${renderStructurePreview(exampleText)}</div></div>`;
           exampleLines = [];
           inExample = false;
         }
@@ -562,8 +576,10 @@ function applyTranslations() {
     // Close a pending example block if we reached the end
     if (inExample && exampleLines.length > 0) {
       const exampleText = exampleLines.join('\n');
-      htmlContent += `<div class="info-example-input">${exampleText}</div>`;
-      htmlContent += `<div class="info-example-preview">${renderStructurePreview(exampleText)}</div></div>`;
+      const inputLabel = (translations.info && translations.info.exampleInputLabel) || 'Įvestis';
+      const previewLabel = (translations.info && translations.info.examplePreviewLabel) || 'Peržiūra';
+      htmlContent += `<div class="info-example-input" data-label="${inputLabel}">${exampleText}</div>`;
+      htmlContent += `<div class="info-example-preview" data-label="${previewLabel}">${renderStructurePreview(exampleText)}</div></div>`;
       exampleLines = [];
       inExample = false;
     }
@@ -616,6 +632,11 @@ function applyTranslations() {
 
   if (charCountEl) {
     updateCharCount();
+  }
+
+  // Reset validation summary text when language changes
+  if (validationSummaryEl) {
+    validationSummaryEl.textContent = '';
   }
 
   // atnaujiname struktūros peržiūrą, kad placeholder tekstas būtų teisinga kalba
@@ -694,31 +715,39 @@ function collectAllPaths(tree, rootDir = '', paths = []) {
   return paths;
 }
 
-function renderTreeBranch(name, node, parentUl, existingPaths, currentPath) {
+function renderTreeBranch(name, node, parentUl, existingPaths, currentPath, invalidDirs, invalidFiles) {
   const dirPath = currentPath ? `${currentPath}/${name}` : name;
   const dirExists = existingPaths[dirPath] === true;
 
-  // katalogo eilutė
+  // Directory line
   const dirLi = document.createElement('li');
-  dirLi.className = dirExists ? 'preview-dir existing' : 'preview-dir';
+  const dirClasses = [];
+  dirClasses.push('preview-dir');
+  if (dirExists) dirClasses.push('existing');
+  if (invalidDirs && invalidDirs.has(name)) dirClasses.push('invalid');
+  dirLi.className = dirClasses.join(' ');
   dirLi.textContent = name + '/';
   parentUl.appendChild(dirLi);
 
-  // vidinių elementų sąrašas
+  // Inner list for children
   const inner = document.createElement('ul');
   parentUl.appendChild(inner);
 
-  // Pirmiausia vidiniai katalogai
+  // First render nested directories
   for (const childName of Object.keys(node.children)) {
-    renderTreeBranch(childName, node.children[childName], inner, existingPaths, dirPath);
+    renderTreeBranch(childName, node.children[childName], inner, existingPaths, dirPath, invalidDirs, invalidFiles);
   }
 
-  // Tada failai šiame kataloge
+  // Then render files in this directory
   for (const file of node.files) {
     const filePath = `${dirPath}/${file}`;
     const fileExists = existingPaths[filePath] === true;
     const fileLi = document.createElement('li');
-    fileLi.className = fileExists ? 'preview-file existing' : 'preview-file';
+    const fileClasses = [];
+    fileClasses.push('preview-file');
+    if (fileExists) fileClasses.push('existing');
+    if (invalidFiles && invalidFiles.has(file)) fileClasses.push('invalid');
+    fileLi.className = fileClasses.join(' ');
     fileLi.textContent = file;
     inner.appendChild(fileLi);
   }
@@ -757,6 +786,22 @@ async function renderStructurePreview() {
   const treeUl = document.createElement('ul');
   treeUl.classList.add('preview-tree');
 
+  // Build simple sets of invalid directory/file names based on the latest
+  // validation result. We match by segment name; this is a best-effort
+  // highlighting and may mark multiple identical names if they appear.
+  const invalidDirs = new Set();
+  const invalidFiles = new Set();
+  if (currentValidation && Array.isArray(currentValidation.errors)) {
+    for (const err of currentValidation.errors) {
+      if (!err || !err.segment) continue;
+      if (err.where === 'directory') {
+        invalidDirs.add(err.segment);
+      } else if (err.where === 'file') {
+        invalidFiles.add(err.segment);
+      }
+    }
+  }
+
   // Gather all relative paths and ask the main process which of them exist
   let existingPaths = {};
   if (currentSettings.rootDir) {
@@ -780,7 +825,7 @@ async function renderStructurePreview() {
 
   // Root katalogai viršuje
   for (const childName of Object.keys(tree.children)) {
-    renderTreeBranch(childName, tree.children[childName], treeUl, existingPaths, '');
+    renderTreeBranch(childName, tree.children[childName], treeUl, existingPaths, '', invalidDirs, invalidFiles);
   }
 
   // Root failai (be kelio) – apačioje
@@ -793,6 +838,74 @@ async function renderStructurePreview() {
   }
 
   previewEl.appendChild(treeUl);
+}
+
+async function runValidationDebounced() {
+  const inputEl = document.getElementById('structure-input');
+  const statusText = document.getElementById('status-text');
+  const validationSummaryEl = document.getElementById('validation-summary');
+  if (!inputEl || !statusText || !window.electronAPI) return;
+
+  const value = inputEl.value;
+
+  if (validationTimeoutId) {
+    clearTimeout(validationTimeoutId);
+  }
+
+  // Small delay so we validate after the user pauses typing.
+  validationTimeoutId = setTimeout(async () => {
+    try {
+      const v = await window.electronAPI.validateStructure(value, currentSettings.rootDir);
+      currentValidation = v || { isValid: true, errors: [] };
+
+      // Soft, real-time feedback: if there are validation errors while typing,
+      // show a generic hint in the status line and a compact summary under input.
+      if (!currentValidation.isValid && translations && translations.validation) {
+        const msg =
+          translations.validation.generic ||
+          translations.main?.statusError ||
+          'Structure definition contains invalid names.';
+
+        statusText.textContent = msg;
+
+        if (validationSummaryEl) {
+          const uniqueLines = Array.from(
+            new Set(
+              (currentValidation.errors || [])
+                .map((e) => e && e.line)
+                .filter((n) => typeof n === 'number')
+            )
+          ).sort((a, b) => a - b);
+
+          const count = currentValidation.errors ? currentValidation.errors.length : 0;
+          const lineLabel = translations.validation.lineLabel || 'line';
+          if (count > 0 && uniqueLines.length > 0) {
+            validationSummaryEl.textContent =
+              `${count} ${translations.validation.summaryErrors || 'errors'} ` +
+              `(${lineLabel} ${uniqueLines.join(', ')})`;
+          } else {
+            validationSummaryEl.textContent = '';
+          }
+        }
+      } else if (currentValidation.isValid) {
+        // If the structure becomes valid again and status currently shows a
+        // generic validation warning, reset back to idle/normal.
+        const genericMsg = translations.validation?.generic;
+        if (genericMsg && statusText.textContent === genericMsg) {
+          const hasRoot = currentSettings && currentSettings.rootDir;
+          statusText.textContent = hasRoot
+            ? translations.main.statusIdle || ''
+            : translations.main.statusNoRoot || '';
+        }
+
+        if (validationSummaryEl) {
+          validationSummaryEl.textContent = '';
+        }
+      }
+    } catch (err) {
+      console.error('validate-structure failed', err);
+    }
+  }, 200);
 }
 
 async function onGenerateClick() {
@@ -821,6 +934,39 @@ async function onGenerateClick() {
     if (!result || result.success === false) {
       if (result && result.errorCode === 'NO_ROOT') {
         statusText.textContent = translations.main.statusNoRoot || 'Root not set.';
+      } else if (result && result.errorCode === 'VALIDATION_ERROR') {
+        // Input violates Windows naming rules or other structural constraints.
+        const v = result.validation || {};
+        const firstError = Array.isArray(v.errors) && v.errors.length > 0 ? v.errors[0] : null;
+
+        if (firstError && translations.validation) {
+          const key = firstError.messageKey && translations.validation[firstError.messageKey]
+            ? firstError.messageKey
+            : 'generic';
+          let baseMessage =
+            translations.validation[key] ||
+            translations.validation.generic ||
+            translations.main.statusError ||
+            'Invalid structure definition.';
+
+          // Append the offending segment (directory or file name) when available,
+          // so the user immediately sees which name (and line) needs to be fixed.
+          const lineLabel = translations.validation.lineLabel || 'line';
+          if (firstError.segment && firstError.line) {
+            baseMessage += ` (${firstError.segment}, ${lineLabel} ${firstError.line})`;
+          } else if (firstError.segment) {
+            baseMessage += ` (${firstError.segment})`;
+          } else if (firstError.line) {
+            baseMessage += ` (${lineLabel} ${firstError.line})`;
+          }
+
+          statusText.textContent = baseMessage;
+        } else {
+          statusText.textContent =
+            (translations.validation && translations.validation.generic) ||
+            translations.main.statusError ||
+            'Invalid structure definition.';
+        }
       } else if (result && result.errorCode === 'FS_ERROR') {
         // Klaida dirbant su failų sistema – rodome bendresnę klaidos žinutę
         statusText.textContent =
@@ -989,6 +1135,7 @@ window.addEventListener('DOMContentLoaded', () => {
     inputEl.addEventListener('input', () => {
       updateCharCount();
       renderStructurePreview();
+      runValidationDebounced();
     });
   }
 

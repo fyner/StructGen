@@ -2,7 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 
-const { parseStructureInput } = require('../src/parser');
+const { validateStructureInput } = require('../src/validation/structureValidator');
 const { loadSettings, saveSettings, getSettingsFilePath } = require('../src/settingsStore');
 
 let mainWindow = null;
@@ -172,6 +172,26 @@ ipcMain.handle('get-translations', (event, langCode) => {
   return loadTranslations(langCode);
 });
 
+// IPC – on-demand structure validation (no file-system writes).
+// This allows the renderer to provide soft, real-time feedback while the
+// user is typing, using exactly the same validation rules as generation.
+// If a `rootDir` is provided, we also validate approximate full path length
+// (`root + relativePath`) against a reasonable Windows limit.
+ipcMain.handle('validate-structure', (event, { input, rootDir }) => {
+  try {
+    const options = rootDir ? { rootDir } : {};
+    return validateStructureInput(input || '', options);
+  } catch (err) {
+    console.error('validate-structure failed', err);
+    return {
+      isValid: false,
+      errors: [],
+      parsed: [],
+      lines: []
+    };
+  }
+});
+
 // IPC – structure generation
 function isPathInsideRoot(rootDir, targetPath) {
   const rootNormalized = path.resolve(rootDir);
@@ -240,7 +260,21 @@ ipcMain.handle('generate-structure', (event, { input, rootDir }) => {
   }
 
   const rootResolved = path.resolve(rootDir);
-  const parsed = parseStructureInput(input);
+
+  // Run structural validation (Windows naming rules etc.). For now, we only
+  // block generation if there are *any* errors, and we return them to the
+  // renderer to be displayed appropriately. We pass the resolved root so that
+  // full path length constraints can be evaluated.
+  const validation = validateStructureInput(input || '', { rootDir: rootResolved });
+  if (!validation.isValid && validation.errors.length > 0) {
+    return {
+      success: false,
+      errorCode: 'VALIDATION_ERROR',
+      validation
+    };
+  }
+
+  const parsed = validation.parsed;
 
   // We count only directories/files that are actually created in this run.
   // Anything that already exists under the root is treated as "skipped"

@@ -1,199 +1,148 @@
-# StructGen
+## StructGen
 
+![Version](https://img.shields.io/badge/version-1.2.0-orange.svg)
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
-![Electron](https://img.shields.io/badge/Electron-39.2.4-47848F?logo=electron)
-![Node](https://img.shields.io/badge/Node.js-LTS-green?logo=node.js)
-![Version](https://img.shields.io/badge/version-1.1.1-orange.svg)
+![Tech](https://img.shields.io/badge/Tech-Electron%20%7C%20Node.js-4a6cf7.svg)
 
-**🇱🇹 [Lietuvių kalba](#lietuvių-kalba) | 🇬🇧 [English](#english)**
+**Language / Kalba:** 🇱🇹 [Lietuvių](#lietuvių-kalba) · 🇬🇧 [English](#english)
+
+---
+
+### Quick navigation
+
+- 🇱🇹 [Lietuvių – Apžvalga](#lietuvių-kalba) · [Struktūros formatas](#struktūros-formatas) · [Validacija](#validacija) · [Naudojimas](#naudojimas)
+- 🇬🇧 [English – Overview](#english) · [Structure format](#structure-format) · [Validation](#validation) · [Usage](#usage)
 
 ---
 
 ## Lietuvių kalba
 
-### Apie
+### Apžvalga
 
-StructGen – tai paprastas desktop įrankis Windows (Electron), kuris iš teksto aprašo sugeneruoja katalogų ir failų struktūrą pasirinktoje vietoje.
+StructGen – minimalistinis įrankis, kuris iš paprasto teksto aprašo sugeneruoja katalogų ir failų medį pasirinktoje root vietoje.
 
-### Funkcijos
+- **Tekstinis aprašas → tikra struktūra** (be „klikų“ Explorer’yje)
+- **Peržiūra realiu laiku** – dešinėje matai medį dar prieš generuodamas
+- **Windows taisyklėmis paremta validacija** – draudžiami simboliai, rezervuoti vardai, max vardų ir pilno kelio ilgis
+- **Dvi kalbos** (LT / EN) ir **šviesi / tamsi tema**
 
-- **Tekstinis struktūros aprašas** – kiekviena eilutė aprašo vieną katalogų kelią ir pasirenkamus failus
-- **Struktūros peržiūra realiu laiku** – dešinėje pusėje matai medžio peržiūrą su paveikslėliais ir atitraukimais dar prieš generuodamas
-- **Alfabetinis rūšiavimas** – katalogai ir failai automatiškai rūšiuojami pagal abėcėlę (katalogai pirmiau, tada failai)
-- **Root katalogo pasirinkimas** – visi katalogai ir failai visada kuriami tik pasirinkto root viduje
-- **Dvi kalbos** – lietuvių ir anglų (perjungiama iš nustatymų arba viršutinio meniu)
-- **Šviesi / tamsi tema** – perjungiama viršutiniame header'yje
-- **Modernus UI** – spalvotos SVG ikonos, modernios scroll juostos, minimalistinis dizainas
+### Struktūros formatas
 
-### Struktūros aprašo formatas
+- Kiekviena eilutė aprašo vieną vietą struktūroje
+- Bendras formatas: `katalogų_kelias: failų_sąrašas`
+- Prieš `:` – katalogų kelias (pvz. `src/components`, `public/assets/images`)
+- Po `:` – failų sąrašas, atskirtas kableliais
+- Katalogai skiriami `/`; gali būti tik katalogas be `:` (sukuriamas tik katalogas)
 
-- Kiekviena nauja eilutė aprašo vieną vietą struktūroje
-- Formatas: `katalogų_kelias: failų_sąrašas`
-- Kairėje iki dvitaškio `:` – katalogų kelias (pvz., `src/components`, `public/assets/images`)
-- Dešinėje po dvitaškio – kableliais atskirtas failų sąrašas tame kelyje
-- Katalogai atskiriami `/` simboliu
-- Galite sukurti bet kokio gylio struktūrą
+**Pagrindiniai pavyzdžiai:**
 
-#### Pavyzdžiai
-
-**Paprastas pavyzdys:**
 ```text
 src/components: Button.jsx, Card.jsx
 src/utils: helpers.js, constants.js
 public: index.html, favicon.ico
-```
 
-**Gilus katalogų struktūra:**
-```text
 src/components/ui/buttons: PrimaryButton.tsx, SecondaryButton.tsx
-src/utils/helpers: stringUtils.js, dateUtils.js
-```
 
-**Root lygio failai:**
-```text
 : README.md, .gitignore, package.json
 ```
 
-> **Svarbu:** Visi keliai visada ribojami pasirinkto root katalogo. Bandymai „išeiti" už jo ribų ignoruojami ir skaičiuojami kaip „praleisti" (Skipped). Jei katalogas ar failas jau egzistuoja, jis neperrašomas.
+> **Pastaba:** visi keliai visada lieka pasirinkto root ribose; bandymai išeiti už ribų ignoruojami ir skaičiuojami kaip *Praleista (Skipped)*. Esami failai / katalogai neperrašomi.
 
-### Paleidimas iš kodo
+### Validacija
 
-Reikalinga **Node.js** ir **npm**.
+StructGen validuoja įvestį **realiu laiku** ir dar kartą paspaudus **Generate**:
 
-```bash
-npm install
-npm run dev
-```
+- Draudžiami simboliai: `< > : " / \ | ? *` ir valdymo simboliai (0–31)
+- Rezervuoti vardai: `CON`, `PRN`, `AUX`, `NUL`, `COM1–COM9`, `LPT1–LPT9` ir pan.
+- Vardas negali baigtis tarpu ar tašku
+- `.` ir `..` negali būti naudojami kaip katalogų ar failų pavadinimai
+- Vieno vardo max ilgis – **255 simboliai**
+- Pilno kelio (`root + santykinis kelias`) ilgis ribojamas iki ~**260 simbolių**
 
-arba:
+### Naudojimas
 
-```bash
-npm start
-```
-
-### Portable `.exe` generavimas (Windows)
-
-Projektas naudoja `electron-builder`.
-
-1. Įdiegti priklausomybes (jei dar ne):
-
-```bash
-npm install
-```
-
-2. Sugeneruoti portable `.exe`:
-
-```bash
-npm run build
-```
-
-3. Sukurtą `StructGen.exe` rasi kataloge `dist/`. Tai yra portable versija, kurią gali kopijuoti kur nori.
-
-### Nustatymai ir kalba
-
-- Nustatymai (root katalogas, kalba, tema) saugomi faile `structgen-settings.json` Electron `userData` kataloge
-- Kalbos tekstai saugomi `locales/lt.json` ir `locales/en.json`
-
-### Planuojami patobulinimai
-
-- **Įvesties validacija** – realaus laiko validacija struktūros aprašo įvedimo metu su aiškiomis klaidų žinutėmis
-
-### Licencija
-
-MIT
-
----
+- **Paleidimas iš kodo** (reikia **Node.js** ir **npm**):
+  ```bash
+  npm install
+  npm run dev
+  # arba
+  npm start
+  ```
+- **Portable `.exe` (Windows)** – naudojamas `electron-builder`:
+  ```bash
+  npm install
+  npm run build
+  ```
+  Sugeneruotą `StructGen.exe` rasi `dist/` kataloge.
 
 ## English
 
-### About
+### Overview
 
-StructGen is a simple desktop tool for Windows (Electron) that generates folder and file structures from a text description in the selected location.
+StructGen is a small, focused desktop tool that turns a plain text description into a real folder & file tree inside your chosen root directory.
 
-### Features
+- **Text → structure** without manual folder creation
+- **Live tree preview** before generating anything on disk
+- **Windows-aware validation** – invalid characters, reserved names, name length and full path length
+- **Two languages** (LT / EN) and **light / dark theme**
 
-- **Text-based structure definition** – each line describes one folder path and optional files
-- **Real-time structure preview** – see a tree preview with icons and indentation on the right side before generating
-- **Alphabetical sorting** – folders and files are automatically sorted alphabetically (folders first, then files)
-- **Root directory selection** – all folders and files are always created only inside the selected root
-- **Two languages** – Lithuanian and English (switchable from settings or top menu)
-- **Light / dark theme** – switchable in the top header
-- **Modern UI** – colorful SVG icons, modern scrollbars, minimalist design
+### Structure format
 
-### Structure definition format
+- Each line describes one location in the structure
+- General format: `folder_path: file_list`
+- Before `:` – folder path (e.g. `src/components`, `public/assets/images`)
+- After `:` – comma-separated list of files in that path
+- Folders are separated with `/`; a line can contain only a folder (no `:`)
 
-- Each new line describes one location in the structure
-- Format: `folder_path: file_list`
-- Left side before colon `:` – folder path (e.g., `src/components`, `public/assets/images`)
-- Right side after colon – comma-separated list of files in that path
-- Folders are separated with `/` symbol
-- You can create structures of any depth
+**Core examples:**
 
-#### Examples
-
-**Simple example:**
 ```text
 src/components: Button.jsx, Card.jsx
 src/utils: helpers.js, constants.js
 public: index.html, favicon.ico
-```
 
-**Deep folder structure:**
-```text
 src/components/ui/buttons: PrimaryButton.tsx, SecondaryButton.tsx
-src/utils/helpers: stringUtils.js, dateUtils.js
-```
 
-**Root level files:**
-```text
 : README.md, .gitignore, package.json
 ```
 
-> **Important:** All paths are always limited to the selected root directory. Attempts to go outside its boundaries are ignored and counted as "Skipped". If a folder or file already exists, it is not overwritten.
+> **Important:** all paths are always constrained to the selected root directory. Attempts to go outside are ignored and counted as *Skipped*. Existing files/directories are never overwritten.
 
-### Running from source
+### Validation
 
-Requires **Node.js** and **npm**.
+StructGen validates input **in real time** and again on **Generate**:
 
-```bash
-npm install
-npm run dev
-```
+- Disallowed characters: `< > : " / \ | ? *` and control characters (0–31)
+- Reserved names: `CON`, `PRN`, `AUX`, `NUL`, `COM1–COM9`, `LPT1–LPT9`, etc.
+- Names cannot end with a space or dot
+- `.` and `..` cannot be used as directory or file names
+- Single name max length – **255 characters**
+- Full path (`root + relative path`) is limited to about **260 characters**
 
-or:
+### Usage
 
-```bash
-npm start
-```
+- **Run from source** (requires **Node.js** and **npm**):
+  ```bash
+  npm install
+  npm run dev
+  # or
+  npm start
+  ```
+- **Portable `.exe` (Windows)** – uses `electron-builder`:
+  ```bash
+  npm install
+  npm run build
+  ```
+  The generated `StructGen.exe` will be placed in the `dist/` folder.
 
-### Portable `.exe` generation (Windows)
+---
 
-The project uses `electron-builder`.
+### Settings / Nustatymai
 
-1. Install dependencies (if not already):
+- Settings (root, language, theme) are stored in `structgen-settings.json` inside the Electron `userData` directory
+- Translation files live in `locales/lt.json` and `locales/en.json`
 
-```bash
-npm install
-```
-
-2. Generate portable `.exe`:
-
-```bash
-npm run build
-```
-
-3. You'll find `StructGen.exe` in the `dist/` folder. This is a portable version that you can copy anywhere.
-
-### Settings and language
-
-- Settings (root directory, language, theme) are saved in `structgen-settings.json` file in Electron `userData` directory
-- Language texts are stored in `locales/lt.json` and `locales/en.json`
-
-### Planned improvements
-
-- **Input validation** – real-time validation during structure definition input with clear error messages
-
-### License
+### License / Licencija
 
 MIT

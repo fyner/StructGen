@@ -313,6 +313,13 @@ html[data-theme='dark'] .header-lang-option.active {
   margin-bottom: 4px;
 }
 
+.validation-summary {
+  font-size: 10px;
+  color: var(--danger);
+  margin-bottom: 4px;
+  min-height: 12px;
+}
+
 .structure-input {
   width: 100%;
   min-height: 150px;
@@ -534,6 +541,16 @@ html[data-theme='dark'] .secondary-button.subtle:hover {
   color: #f97316;
 }
 
+/* Invalid directory names – highlighted in red for quick visual feedback */
+.preview-dir.invalid {
+  color: var(--danger);
+}
+
+.preview-dir.invalid::before {
+  filter: none;
+  color: var(--danger);
+}
+
 .preview-file {
   color: var(--text-main);
   position: relative;
@@ -555,6 +572,16 @@ html[data-theme='dark'] .secondary-button.subtle:hover {
 
 .preview-file.existing::before {
   color: #f97316;
+}
+
+/* Invalid file names – highlighted in red for quick visual feedback */
+.preview-file.invalid {
+  color: var(--danger);
+}
+
+.preview-file.invalid::before {
+  filter: none;
+  color: var(--danger);
 }
 
 /* Dark theme – preview container */
@@ -937,7 +964,7 @@ html[data-theme='dark'] #info-modal-backdrop .modal-title::before {
 }
 
 .info-example-input::before {
-  content: 'Įvestis';
+  content: attr(data-label);
   position: absolute;
   top: -7px;
   left: 10px;
@@ -968,7 +995,7 @@ html[data-theme='dark'] .info-example-input::before {
 }
 
 .info-example-preview::before {
-  content: 'Peržiūra';
+  content: attr(data-label);
   position: absolute;
   top: -7px;
   left: 10px;

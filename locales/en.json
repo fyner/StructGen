@@ -36,12 +36,31 @@
   },
   "info": {
     "title": "How to use",
-    "body": "StructGen allows you to quickly create folder and file structures from a plain text description. Simply enter the structure definition, and the application will automatically create all folders and files in the selected location.\n\n⚠️ Important\n- Everything is always created only inside the selected root directory.\n- Attempts to go outside the root directory are ignored (counted as \"Skipped\").\n- If a folder or file already exists, it is not overwritten (counted as \"Skipped\").\n- Empty lines are ignored.\n\n📝 How it works\n- Each line describes one location in the structure.\n- Format: folder_path: file_list\n- Left side before the colon \":\" – folder path.\n- Right side after the colon – list of files (separated by commas).\n- Folders are separated with \"/\".\n- You can create structures of any depth.\n\n✨ All possible variants\n\nVariant 1: Single file (root level)\n: README.md\n\nVariant 2: Folder only (without files)\nsrc/components\n\nVariant 3: Folder with files\nsrc/components: Button.jsx, Card.jsx\n\nVariant 4: Multiple files at root level\n: README.md, .gitignore, package.json\n\nVariant 5: Deep folder with files\nsrc/components/ui/buttons: PrimaryButton.tsx, SecondaryButton.tsx\n\nVariant 6: More complex structure example\nsrc/components: Button.jsx, Card.jsx\nsrc/utils: helpers.js, constants.js\npublic: index.html, favicon.ico\nconfig: settings.json"
+    "body": "StructGen is a small desktop tool that turns a plain text description into a real folder and file tree inside your chosen root directory. Instead of creating folders by hand, you describe the structure as text – the app generates it for you.\n\n⚠️ General rules\n- Everything is always created only inside the selected root directory.\n- Attempts to go outside of the root directory are ignored (counted as \"Skipped\").\n- If a folder or file already exists, it is not overwritten (counted as \"Skipped\").\n- Empty lines in the structure definition are ignored.\n\n📂 Structure format\n- Each new line describes one location in the structure.\n- General format: folder_path: file_list\n- Left side before the colon \":\" – folder path (can be empty if files are created directly at the root level).\n- Right side after the colon – list of files, separated by commas.\n- Folders in paths are separated with \"/\" (for example, src/components/ui).\n- A line can contain only a folder (without a colon) – then only the folder is created, without files.\n\n🎯 Name rules (Windows)\n- All folder and file names are checked against Windows naming rules.\n- You cannot use the characters: < > : \\\" / \\\\ | ? * or control characters (0–31).\n- You cannot use reserved names: CON, PRN, AUX, NUL, COM1–COM9, LPT1–LPT9, etc.\n- A name cannot end with a space or a dot.\n- The names \".\" and \"..\" cannot be used as directory or file names.\n- The maximum length for a single directory or file name is 255 characters.\n\n✨ Examples\n\nExample 1: Single file at root level\n: README.md\n\nExample 2: Folder only (no files)\nsrc/components\n\nExample 3: Folder with multiple files\nsrc/components: Button.jsx, Card.jsx\n\nExample 4: Multiple files at root level\n: README.md, .gitignore, package.json\n\nExample 5: Deep folder with files\nsrc/components/ui/buttons: PrimaryButton.tsx, SecondaryButton.tsx\n\nExample 6: More complex structure\nsrc/components: Button.jsx, Card.jsx\nsrc/utils: helpers.js, constants.js\npublic: index.html, favicon.ico\nconfig: settings.json",
+    "exampleInputLabel": "Input",
+    "examplePreviewLabel": "Preview"
   },
   "errors": {
     "noRoot": "Root directory is not set.",
     "cannotWriteOutsideRoot": "Cannot generate outside of selected root directory.",
     "generic": "Unknown error occurred."
+  },
+  "validation": {
+    "invalidDirChar": "A directory name contains Windows-invalid characters.",
+    "invalidFileChar": "A file name contains Windows-invalid characters.",
+    "reservedDirName": "A Windows-reserved name is used as a directory name (for example CON, PRN, NUL, COM1, LPT1, etc.).",
+    "reservedFileName": "A Windows-reserved name is used as a file name (for example CON, PRN, NUL, COM1, LPT1, etc.).",
+    "trailingDotOrSpaceDir": "A directory name cannot end with a space or a dot.",
+    "trailingDotOrSpaceFile": "A file name cannot end with a space or a dot.",
+    "dotSegmentDirNotAllowed": "The special segments \".\" and \"..\" cannot be used as directory names.",
+    "dotSegmentFileNotAllowed": "The special segments \".\" and \"..\" cannot be used as file names.",
+    "segmentDirTooLong": "A directory name is too long. Maximum allowed length is 255 characters.",
+    "segmentFileTooLong": "A file name is too long. Maximum allowed length is 255 characters.",
+    "pathTooLongDir": "The full directory path is too long and exceeds the Windows path length limit.",
+    "pathTooLongFile": "The full file path is too long and exceeds the Windows path length limit.",
+    "lineLabel": "line",
+    "summaryErrors": "errors",
+    "generic": "The structure definition contains invalid directory or file names."
   }
 }
 
