@@ -136,13 +136,13 @@ function applyTranslations() {
   const themeToggleBtn = document.getElementById('theme-toggle');
   const charCountEl = document.getElementById('char-count');
 
-  if (inputLabelEl) inputLabelEl.textContent = translations.main.inputLabel;
+  if (inputLabelEl && translations.main?.inputLabel) inputLabelEl.textContent = translations.main.inputLabel;
   // Placeholder nenaudojame – paliekame švarų lauką be pagalbinio teksto
   if (inputEl) {
     inputEl.placeholder = '';
   }
-  if (generateBtn) generateBtn.textContent = translations.main.generateButton;
-  if (clearBtn) clearBtn.textContent = translations.main.clearButton;
+  if (generateBtn && translations.main?.generateButton) generateBtn.textContent = translations.main.generateButton;
+  if (clearBtn && translations.main?.clearButton) clearBtn.textContent = translations.main.clearButton;
   // Nav mygtukai su spalvotomis SVG ikonomis
   if (navSettings) {
     navSettings.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="nav-icon">
@@ -168,8 +168,8 @@ function applyTranslations() {
   }
 
   // Info modal - formatuojame su SVG ikonoms ir gražesniu dizainu
-  if (infoTitle && translations.info) infoTitle.textContent = translations.info.title;
-  if (infoContent && translations.info) {
+  if (infoTitle && translations.info?.title) infoTitle.textContent = translations.info.title;
+  if (infoContent && translations.info?.body) {
     const body = translations.info.body;
     
     // SVG ikonos su spalvomis - naudojame emoji kaip raktus
@@ -498,19 +498,23 @@ function applyTranslations() {
     infoContent.innerHTML = htmlContent || body;
   }
 
-  if (statusText) {
+  if (statusText && translations.main) {
     const hasRoot = currentSettings && currentSettings.rootDir;
-    statusText.textContent = hasRoot ? translations.main.statusIdle : translations.main.statusNoRoot;
+    statusText.textContent = hasRoot 
+      ? (translations.main.statusIdle || '') 
+      : (translations.main.statusNoRoot || '');
   }
 
-  if (statusTitleEl && translations.main.statusTitle) {
+  if (statusTitleEl && translations.main?.statusTitle) {
     statusTitleEl.textContent = translations.main.statusTitle;
   }
 
   // Header switchų tooltipai ir aktyvios kalbos būsena
   if (themeToggleBtn && translations.main) {
     themeToggleBtn.title =
-      currentSettings.theme === 'dark' ? translations.main.themeLight : translations.main.themeDark;
+      currentSettings.theme === 'dark' 
+        ? (translations.main.themeLight || '') 
+        : (translations.main.themeDark || '');
   }
 
   if (headerLangToggle && availableLanguages.length > 0) {
@@ -601,7 +605,12 @@ function buildStructureTree(items) {
 }
 
 // Surinkti visus katalogų ir failų kelius iš struktūros medžio
-function collectAllPaths(tree, rootDir = '', paths = []) {
+function collectAllPaths(tree, rootDir = '', paths = null) {
+  // Inicializuojame paths masyvą, jei neperduotas (išvengiame mutable default parametro problemos)
+  if (paths === null) {
+    paths = [];
+  }
+  
   // Katalogai
   for (const [dirName, dirNode] of Object.entries(tree.children)) {
     const dirPath = rootDir ? `${rootDir}/${dirName}` : dirName;
@@ -671,7 +680,7 @@ async function renderStructurePreview() {
     const empty = document.createElement('div');
     empty.className = 'structure-preview-empty';
     empty.textContent =
-      (translations.main && translations.main.previewEmpty) ||
+      (translations.main?.previewEmpty) ||
       'Type a structure definition to see its preview.';
     previewEl.appendChild(empty);
     return;
@@ -681,13 +690,16 @@ async function renderStructurePreview() {
   const treeUl = document.createElement('ul');
   treeUl.classList.add('preview-tree');
 
+  // Išsaugome rootDir prieš async operaciją, kad galėtume patikrinti, ar jis nepasikeitė
+  const rootDirAtStart = currentSettings.rootDir;
+
   // Surinkti visus kelius ir patikrinti, kurie egzistuoja (jei rootDir nustatytas)
   let existingPaths = {};
-  if (currentSettings.rootDir) {
+  if (rootDirAtStart) {
     try {
       const allPaths = collectAllPaths(tree);
       existingPaths = await ipcRenderer.invoke('check-paths-exist', {
-        rootDir: currentSettings.rootDir,
+        rootDir: rootDirAtStart,
         paths: allPaths
       });
     } catch (err) {
@@ -699,6 +711,11 @@ async function renderStructurePreview() {
   // Patikriname, ar input vis dar tas pats (gali būti pasikeitęs per async operaciją)
   if (inputEl.value !== currentInput) {
     return; // Input pasikeitė, neberenderiname
+  }
+
+  // Patikriname, ar rootDir nepasikeitė per async operaciją
+  if (currentSettings.rootDir !== rootDirAtStart) {
+    return; // RootDir pasikeitė, neberenderiname su senais duomenimis
   }
 
   // Root katalogai viršuje
@@ -726,7 +743,7 @@ async function onGenerateClick() {
   if (!inputEl || !statusText || !generateBtn) return;
 
   if (!currentSettings.rootDir) {
-    statusText.textContent = translations.main.statusNoRoot || 'Root not set.';
+    statusText.textContent = (translations.main?.statusNoRoot) || 'Root not set.';
     return;
   }
 
@@ -743,20 +760,20 @@ async function onGenerateClick() {
 
     if (!result || result.success === false) {
       if (result && result.errorCode === 'NO_ROOT') {
-        statusText.textContent = translations.main.statusNoRoot || 'Root not set.';
+        statusText.textContent = (translations.main?.statusNoRoot) || 'Root not set.';
       } else if (result && result.errorCode === 'FS_ERROR') {
         // Klaida dirbant su failų sistema – rodome bendresnę klaidos žinutę
         statusText.textContent =
-          (translations.errors && translations.errors.generic) ||
-          translations.main.statusError ||
+          (translations.errors?.generic) ||
+          (translations.main?.statusError) ||
           'Error.';
       } else {
-        statusText.textContent = translations.main.statusError || 'Error.';
+        statusText.textContent = (translations.main?.statusError) || 'Error.';
       }
       return;
     }
 
-    const tmpl = translations.main.statusSuccess || 'Created 📁: {createdDirs} 📄: {createdFiles} | Skipped 📁: {skippedDirs} 📄: {skippedFiles}';
+    const tmpl = (translations.main?.statusSuccess) || 'Created 📁: {createdDirs} 📄: {createdFiles} | Skipped 📁: {skippedDirs} 📄: {skippedFiles}';
     statusText.textContent = formatTemplate(tmpl, {
       createdDirs: result.createdDirs || 0,
       skippedDirs: result.skippedDirs || 0,
@@ -765,7 +782,7 @@ async function onGenerateClick() {
     });
   } catch (err) {
     console.error('generate-structure failed', err);
-    statusText.textContent = translations.main.statusError || 'Error.';
+    statusText.textContent = (translations.main?.statusError) || 'Error.';
   } finally {
     generateBtn.disabled = false;
     generateBtn.classList.remove('is-loading');
@@ -805,11 +822,11 @@ function onClearClick() {
   if (inputEl) {
     inputEl.value = '';
   }
-  if (statusText) {
+  if (statusText && translations.main) {
     const hasRoot = currentSettings && currentSettings.rootDir;
     statusText.textContent = hasRoot
-      ? translations.main.statusIdle || ''
-      : translations.main.statusNoRoot || '';
+      ? (translations.main.statusIdle || '')
+      : (translations.main.statusNoRoot || '');
   }
 
   // atnaujiname peržiūrą – parodome tuščią būseną
@@ -890,7 +907,7 @@ async function setTheme(theme) {
   applyTheme();
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', async () => {
   const generateBtn = document.getElementById('generate-button');
   const navSettings = document.getElementById('nav-settings');
   const navInfo = document.getElementById('nav-info');
@@ -988,7 +1005,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  loadSettingsAndTranslations();
+  await loadSettingsAndTranslations();
   // pradinė peržiūra (tuščia) ir simbolių skaičius
   renderStructurePreview();
   updateCharCount();

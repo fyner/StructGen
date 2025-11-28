@@ -397,4 +397,3 @@ ipcMain.handle('generate-structure', (event, { input, rootDir }) => {
   }
 });
 
-
