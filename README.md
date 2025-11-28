@@ -5,14 +5,10 @@
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Tech](https://img.shields.io/badge/Tech-Electron%20%7C%20Node.js-4a6cf7.svg)
 
-**Language / Kalba:** 🇱🇹 [Lietuvių](#lietuvių-kalba) · 🇬🇧 [English](#english)
-
----
-
 ### Quick navigation
 
-- 🇱🇹 [Lietuvių – Apžvalga](#lietuvių-kalba) · [Struktūros formatas](#struktūros-formatas) · [Validacija](#validacija) · [Naudojimas](#naudojimas)
-- 🇬🇧 [English – Overview](#english) · [Structure format](#structure-format) · [Validation](#validation) · [Usage](#usage)
+- 🇱🇹 [Apžvalga](#lietuvių-kalba) · [Struktūros formatas](#struktūros-formatas) · [Validacija](#validacija) · [Naudojimas](#naudojimas)
+- 🇬🇧 [Overview](#english) · [Structure format](#structure-format) · [Validation](#validation) · [Usage](#usage)
 
 ---
 
@@ -20,12 +16,11 @@
 
 ### Apžvalga
 
-StructGen – minimalistinis įrankis, kuris iš paprasto teksto aprašo sugeneruoja katalogų ir failų medį pasirinktoje root vietoje.
+StructGen – įrankis, kuris iš paprasto teksto aprašo sugeneruoja katalogų ir failų medį
 
 - **Tekstinis aprašas → tikra struktūra** (be „klikų“ Explorer’yje)
 - **Peržiūra realiu laiku** – dešinėje matai medį dar prieš generuodamas
 - **Windows taisyklėmis paremta validacija** – draudžiami simboliai, rezervuoti vardai, max vardų ir pilno kelio ilgis
-- **Dvi kalbos** (LT / EN) ir **šviesi / tamsi tema**
 
 ### Struktūros formatas
 
@@ -80,12 +75,11 @@ StructGen validuoja įvestį **realiu laiku** ir dar kartą paspaudus **Generate
 
 ### Overview
 
-StructGen is a small, focused desktop tool that turns a plain text description into a real folder & file tree inside your chosen root directory.
+StructGen is desktop tool that turns a plain text description into a real folder & file tree.
 
 - **Text → structure** without manual folder creation
 - **Live tree preview** before generating anything on disk
 - **Windows-aware validation** – invalid characters, reserved names, name length and full path length
-- **Two languages** (LT / EN) and **light / dark theme**
 
 ### Structure format
 
@@ -137,12 +131,3 @@ StructGen validates input **in real time** and again on **Generate**:
   The generated `StructGen.exe` will be placed in the `dist/` folder.
 
 ---
-
-### Settings / Nustatymai
-
-- Settings (root, language, theme) are stored in `structgen-settings.json` inside the Electron `userData` directory
-- Translation files live in `locales/lt.json` and `locales/en.json`
-
-### License / Licencija
-
-MIT
