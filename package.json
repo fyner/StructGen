@@ -1,6 +1,6 @@
 {
   "name": "structgen",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Generates folder and file structures from a simple text description",
   "main": "electron/main.js",
   "scripts": {

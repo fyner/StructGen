@@ -832,7 +832,11 @@ async function renderStructurePreview() {
   for (const file of tree.files) {
     const fileExists = existingPaths[file] === true;
     const fileLi = document.createElement('li');
-    fileLi.className = fileExists ? 'preview-file existing' : 'preview-file';
+    const fileClasses = [];
+    fileClasses.push('preview-file');
+    if (fileExists) fileClasses.push('existing');
+    if (invalidFiles && invalidFiles.has(file)) fileClasses.push('invalid');
+    fileLi.className = fileClasses.join(' ');
     fileLi.textContent = file;
     treeUl.appendChild(fileLi);
   }
