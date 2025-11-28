@@ -1,0 +1,46 @@
+{
+  "app": {
+    "title": "StructGen"
+  },
+  "nav": {
+    "settings": "Nustatymai",
+    "info": "Info"
+  },
+  "main": {
+    "inputLabel": "Struktūros aprašas",
+    "generateButton": "Generuoti struktūrą",
+    "clearButton": "Išvalyti",
+    "statusTitle": "Statusas",
+    "statusIdle": "Pasiruošęs generuoti struktūrą.",
+    "statusNoRoot": "Pirmiausia nustatyk šakninį katalogą nustatymuose.",
+    "statusSuccess": "Sukurta katalogų: {dirs}, failų: {files}. Praleista: {skipped}.",
+    "statusError": "Įvyko klaida generuojant struktūrą.",
+    "previewEmpty": "Įvesk struktūros aprašą kairėje, kad matytum jos peržiūrą čia.",
+    "themeLight": "Šviesi tema",
+    "themeDark": "Tamsi tema",
+    "charCountLabel": "Simboliai: {used} / {max}"
+  },
+  "settings": {
+    "windowTitle": "StructGen – Nustatymai",
+    "rootDirLabel": "Šakninė vieta (root), kur bus generuojami katalogai ir failai",
+    "rootDirPlaceholder": "Pasirink katalogą...",
+    "chooseRootButton": "Pasirinkti katalogą",
+    "languageLabel": "Programos kalba",
+    "languageLt": "Lietuvių",
+    "languageEn": "English",
+    "saveButton": "Išsaugoti nustatymus",
+    "savedMessage": "Nustatymai išsaugoti.",
+    "saveError": "Nepavyko išsaugoti nustatymų."
+  },
+  "info": {
+    "title": "Kaip naudoti StructGen",
+    "body": "StructGen iš paprasto teksto aprašo sukuria katalogų ir failų struktūrą pasirinktoje vietoje.\n\n1. Eilučių principas\n- Kiekviena eilutė aprašo vieną vietą struktūroje.\n- Kairėje iki dvitaškio „:“ – katalogų kelias.\n- Dešinėje po dvitaškio – failų sąrašas tame kelyje.\n\n2. Katalogų kelias\n- Katalogai atskiriami \"/\" simboliu.\n- Pirmas segmentas – viršutinis katalogas, toliau – vidiniai.\n- Pvz.: Pro/etc reiškia „Pro“ ir jame esantį „etc“.\n\n3. Failų sąrašas\n- Failai atskiriami kableliais.\n- Tarpai aplink pavadinimus ignoruojami.\n- Pvz.: index.html, main.css\n\n4. Pilnas pavyzdys\nPro/etc: index.html, main.css\nPro/js: main.js\n\nKą tai padarys?\n- Sukurs katalogą „Pro“.\n- Jo viduje: „etc“ ir „js“ katalogus.\n- „etc“ viduje: index.html, main.css.\n- „js“ viduje: main.js.\n\nSvarbu\n- Viskas visada kuriama tik pasirinkto root katalogo viduje.\n- Bandymai išeiti už root ribų yra ignoruojami (skaičiuojami kaip „Praleista“)."
+  },
+  "errors": {
+    "noRoot": "Root katalogas nenustatytas.",
+    "cannotWriteOutsideRoot": "Negalima generuoti už pasirinkto root ribų.",
+    "generic": "Įvyko nežinoma klaida."
+  }
+}
+
+

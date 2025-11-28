@@ -1,0 +1,34 @@
+{
+  "name": "structgen",
+  "version": "1.0.0",
+  "description": "Failų ir katalogų struktūros generatorius Windows OS (Electron)",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "electron-builder --win portable"
+  },
+  "build": {
+    "appId": "com.structgen.app",
+    "productName": "StructGen",
+    "files": [
+      "electron/**/*",
+      "assets/**/*",
+      "renderer/**/*",
+      "src/**/*",
+      "locales/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "assets/structgen-icon.ico"
+    }
+  },
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "dependencies": {}
+}

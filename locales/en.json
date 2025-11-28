@@ -1,0 +1,46 @@
+{
+  "app": {
+    "title": "StructGen"
+  },
+  "nav": {
+    "settings": "Settings",
+    "info": "Info"
+  },
+  "main": {
+    "inputLabel": "Structure definition",
+    "generateButton": "Generate structure",
+    "clearButton": "Clear",
+    "statusTitle": "Status",
+    "statusIdle": "Ready to generate structure.",
+    "statusNoRoot": "Please set root directory in settings first.",
+    "statusSuccess": "Created folders: {dirs}, files: {files}. Skipped: {skipped}.",
+    "statusError": "An error occurred while generating structure.",
+    "previewEmpty": "Type a structure definition on the left to see its preview here.",
+    "themeLight": "Light theme",
+    "themeDark": "Dark theme",
+    "charCountLabel": "Characters: {used} / {max}"
+  },
+  "settings": {
+    "windowTitle": "StructGen – Settings",
+    "rootDirLabel": "Root directory where folders and files will be generated",
+    "rootDirPlaceholder": "Choose a directory...",
+    "chooseRootButton": "Choose directory",
+    "languageLabel": "Application language",
+    "languageLt": "Lietuvių",
+    "languageEn": "English",
+    "saveButton": "Save settings",
+    "savedMessage": "Settings saved.",
+    "saveError": "Error saving settings."
+  },
+  "info": {
+    "title": "How to use StructGen",
+    "body": "StructGen takes a plain‑text description and creates folders/files in the selected location.\n\n1. Line basics\n- Each line describes one place in the structure.\n- Left side before the colon \":\" – folder path.\n- Right side after the colon – list of files in that path.\n\n2. Folder path\n- Folders are separated with \"/\".\n- First segment is the top‑level folder, next ones are nested.\n- Example: Pro/etc means folder \"Pro\" with \"etc\" inside it.\n\n3. File list\n- Files are separated by commas.\n- Spaces around names are ignored.\n- Example: index.html, main.css\n\n4. Full example\nPro/etc: index.html, main.css\nPro/js: main.js\n\nWhat will this create?\n- Folder \"Pro\".\n- Inside it: folders \"etc\" and \"js\".\n- In \"etc\": index.html, main.css.\n- In \"js\": main.js.\n\nImportant\n- Everything is always created only inside the selected root directory.\n- Attempts to go outside root are ignored (counted as \"Skipped\")."
+  },
+  "errors": {
+    "noRoot": "Root directory is not set.",
+    "cannotWriteOutsideRoot": "Cannot generate outside of selected root directory.",
+    "generic": "Unknown error occurred."
+  }
+}
+
+

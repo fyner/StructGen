@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>StructGen</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-root">
+      <header class="app-header">
+        <nav class="top-nav top-nav-left">
+          <button class="nav-link" id="nav-info"></button>
+          <button class="nav-link" id="nav-settings"></button>
+        </nav>
+        <div class="header-right">
+          <div class="header-switches">
+            <button class="chip-button" id="theme-toggle">☀ / ☾</button>
+          </div>
+          <div class="header-lang">
+            <button id="header-language-toggle" class="header-lang-toggle"></button>
+            <div id="header-language-menu" class="header-lang-menu">
+              <button class="header-lang-option" data-lang="lt"></button>
+              <button class="header-lang-option" data-lang="en"></button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="app-main">
+        <section class="input-section">
+          <label for="structure-input" class="input-label" id="input-label"></label>
+          <div class="char-count" id="char-count"></div>
+          <textarea
+            id="structure-input"
+            class="structure-input"
+            maxlength="1000"
+            spellcheck="false"
+          ></textarea>
+          <div class="actions-row">
+            <button class="primary-button" id="generate-button"></button>
+            <button class="secondary-button subtle" id="clear-button"></button>
+          </div>
+        </section>
+
+        <section class="status-section">
+          <div class="status-header">
+            <div class="status-title" id="status-title"></div>
+            <div class="status-text" id="status-text"></div>
+          </div>
+          <div class="preview-block">
+            <div class="structure-preview" id="structure-preview"></div>
+          </div>
+        </section>
+      </main>
+
+      <!-- Settings modal -->
+      <div class="modal-backdrop" id="settings-modal-backdrop">
+        <div class="modal">
+          <div class="modal-header">
+            <div class="modal-title" id="settings-modal-title"></div>
+            <button class="modal-close" data-close-modal="settings">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="root-dir-display" id="root-dir-label"></label>
+              <div class="root-dir-row">
+                <input id="root-dir-display" class="text-input" type="text" readonly />
+                <button class="secondary-button" id="choose-root-button"></button>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="language-select" id="language-label"></label>
+              <select id="language-select" class="select-input">
+                <option value="lt" id="language-option-lt"></option>
+                <option value="en" id="language-option-en"></option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <div class="status-text small" id="settings-status-text"></div>
+            <button class="primary-button" id="save-settings-button"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info modal -->
+      <div class="modal-backdrop" id="info-modal-backdrop">
+        <div class="modal">
+          <div class="modal-header">
+            <div class="modal-title" id="info-modal-title"></div>
+            <button class="modal-close" data-close-modal="info">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="info-text" id="info-modal-content"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="./renderer.js"></script>
+  </body>
+  </html>
+
+
