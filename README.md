@@ -2,7 +2,7 @@
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
-![Electron](https://img.shields.io/badge/Electron-30.0.0-47848F?logo=electron)
+![Electron](https://img.shields.io/badge/Electron-39.2.4-47848F?logo=electron)
 ![Node](https://img.shields.io/badge/Node.js-LTS-green?logo=node.js)
 ![Version](https://img.shields.io/badge/version-1.1.0-orange.svg)
 
@@ -95,6 +95,10 @@ npm run build
 - Nustatymai (root katalogas, kalba, tema) saugomi faile `structgen-settings.json` Electron `userData` kataloge
 - Kalbos tekstai saugomi `locales/lt.json` ir `locales/en.json`
 
+### Planuojami patobulinimai
+
+- **Įvesties validacija** – realaus laiko validacija struktūros aprašo įvedimo metu su aiškiomis klaidų žinutėmis
+
 ### Licencija
 
 MIT
@@ -185,6 +189,10 @@ npm run build
 
 - Settings (root directory, language, theme) are saved in `structgen-settings.json` file in Electron `userData` directory
 - Language texts are stored in `locales/lt.json` and `locales/en.json`
+
+### Planned improvements
+
+- **Input validation** – real-time validation during structure definition input with clear error messages
 
 ### License
 
