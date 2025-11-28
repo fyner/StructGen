@@ -8,17 +8,24 @@ const { loadSettings, saveSettings, getSettingsFilePath } = require('../src/sett
 let mainWindow = null;
 
 function createMainWindow() {
+  // Main application window. This is intentionally non-resizable so the
+  // layout matches the design pixel‑perfectly and testing/debugging is easier.
   mainWindow = new BrowserWindow({
     width: 780,
     height: 650,
-    resizable: false,       // fiksuotas lango dydis
+    resizable: false,
     maximizable: false,
     fullscreenable: false,
     autoHideMenuBar: true,
+    // Application icon (used in the taskbar, window chrome, etc.)
     icon: path.join(__dirname, '../assets/structgen-icon.ico'),
     webPreferences: {
-      nodeIntegration: true,
-      contextIsolation: false
+      // Security: disable Node.js integration in the renderer
+      nodeIntegration: false,
+      // Security: isolate the renderer context and expose a minimal API via preload
+      contextIsolation: true,
+      // Preload script that defines the safe `window.electronAPI` bridge
+      preload: path.join(__dirname, 'preload.js')
     },
     title: 'StructGen'
   });
@@ -73,9 +80,10 @@ ipcMain.handle('choose-root-directory', async () => {
   return result.filePaths[0];
 });
 
-// IPC – vertimai
-// Automatiškai aptinkame visas kalbas iš locales katalogo
-// Grąžiname objektą su kalbos kodu ir failo pavadinimu
+// IPC – translations
+// Discover every available language by scanning the `locales` directory.
+// Each JSON file is treated as one language; we infer the language code either
+// from `app.languageCode` in the JSON or from the filename itself.
 function getAvailableLanguages() {
   const localesDir = path.join(__dirname, '../locales');
   const languages = [];
@@ -86,7 +94,7 @@ function getAvailableLanguages() {
       if (file.endsWith('.json')) {
         const filePath = path.join(localesDir, file);
         try {
-          // Skaityti JSON failą, kad gautume languageCode
+          // Read JSON file to extract the language code and metadata
           const raw = fs.readFileSync(filePath, 'utf-8');
           const json = JSON.parse(raw);
           const languageCode = json.app?.languageCode || file.replace('.json', '');
@@ -96,7 +104,7 @@ function getAvailableLanguages() {
           });
         } catch (err) {
           console.error(`Failed to read ${file}`, err);
-          // Fallback į failo pavadinimą
+          // Fallback: if parsing fails, still expose this file as a language entry
           languages.push({
             code: file.replace('.json', ''),
             file: file.replace('.json', '')
@@ -106,18 +114,21 @@ function getAvailableLanguages() {
     }
   } catch (err) {
     console.error('Failed to read locales directory', err);
-    return []; // Grąžiname tuščią masyvą, jei nepavyko nuskaityti
+    // On error we return an empty list so the renderer can gracefully hide
+    // language‑related UI instead of crashing.
+    return [];
   }
   
-  return languages; // Grąžiname masyvą su {code, file} objektais
+  // Array of objects: { code, file } where `file` is the basename without .json
+  return languages;
 }
 
 function loadTranslations(langCode) {
   const availableLanguages = getAvailableLanguages();
-  // Rasti kalbos failą pagal kodą
+  // Find translation file by language code
   const langInfo = availableLanguages.find(lang => lang.code === langCode);
   if (!langInfo) {
-    // Jei nerasta pagal kodą, naudojame pirmąją iš sąrašo
+    // Fallback: if requested language is not found, use the first available one
     const firstLang = availableLanguages[0];
     if (!firstLang) {
       console.error('No languages available');
@@ -146,7 +157,7 @@ ipcMain.handle('get-available-languages', () => {
   return getAvailableLanguages();
 });
 
-// IPC – gauti kalbos pavadinimą pagal kodą
+// IPC – resolve a human‑readable language name by its code
 ipcMain.handle('get-language-name', (event, langCode) => {
   try {
     const translations = loadTranslations(langCode);
@@ -161,32 +172,33 @@ ipcMain.handle('get-translations', (event, langCode) => {
   return loadTranslations(langCode);
 });
 
-// IPC – struktūros generavimas
+// IPC – structure generation
 function isPathInsideRoot(rootDir, targetPath) {
   const rootNormalized = path.resolve(rootDir);
   const targetNormalized = path.resolve(targetPath);
 
   const relative = path.relative(rootNormalized, targetNormalized);
-
-  // viduje root, jei kelias nėra išeinantis į viršų ir nėra absoliutus
+  // A path is considered inside root if it does not traverse upwards (`..`)
+  // and the computed relative path is not absolute.
   return !relative.startsWith('..') && !path.isAbsolute(relative);
 }
 
-// Case-insensitive kelio egzistavimo tikrinimas (Windows)
-// Windows'e fs.existsSync() jau yra case-insensitive, bet patikrinsime tiksliau
-// naudojant realpathSync, kuris grąžina tikrąjį kelio pavadinimą
+// Case‑insensitive path existence check (primarily for Windows).
+// - `fs.existsSync` on Windows is already case‑insensitive, but we normalize
+//   the path via `realpathSync` to get the canonical casing when possible.
 function findExistingPathCaseInsensitive(filePath) {
   try {
-    // Pirmiausia patikrinkime ar kelias egzistuoja
+    // Fast path: if the path clearly does not exist, stop early.
     if (!fs.existsSync(filePath)) {
       return null;
     }
     
-    // Windows'e realpathSync grąžina tikrąjį kelio pavadinimą (su teisingais raidžių dydžiais)
+    // On Windows, `realpathSync` returns the canonical path (including casing).
     try {
       return fs.realpathSync(filePath);
     } catch {
-      // Jei realpathSync nepavyko, naudosime originalų kelio pavadinimą
+      // If `realpathSync` fails (e.g. network share quirks), fall back to the
+      // original path – we still know it exists from `existsSync` above.
       return filePath;
     }
   } catch {
@@ -194,7 +206,8 @@ function findExistingPathCaseInsensitive(filePath) {
   }
 }
 
-// IPC – tikrinimas, kurie keliai egzistuoja (naudojama peržiūroje realiu laiku)
+// IPC – bulk check which relative paths already exist on disk.
+// Used by the live structure preview to visually distinguish existing items.
 ipcMain.handle('check-paths-exist', (event, { rootDir, paths }) => {
   if (!rootDir || !paths || !Array.isArray(paths)) {
     return {};
@@ -205,9 +218,10 @@ ipcMain.handle('check-paths-exist', (event, { rootDir, paths }) => {
 
   for (const relPath of paths) {
     const fullPath = path.join(rootResolved, relPath);
-    // Tikriname tik jei kelias yra root viduje (saugumo sumetimais)
+    // Only report existence for paths that are inside the configured root.
+    // This prevents accidental information disclosure outside the workspace.
     if (isPathInsideRoot(rootResolved, fullPath)) {
-      // Windows'e fs.existsSync() jau yra case-insensitive
+      // On Windows, `fs.existsSync` is effectively case‑insensitive.
       result[relPath] = fs.existsSync(fullPath);
     } else {
       result[relPath] = false;
@@ -228,26 +242,27 @@ ipcMain.handle('generate-structure', (event, { input, rootDir }) => {
   const rootResolved = path.resolve(rootDir);
   const parsed = parseStructureInput(input);
 
-  // Skaičiuojame tik realiai naujai sukurtus katalogus šiame generavimo paleidime.
-  // Jei katalogas jau egzistuoja root viduje – jo neperrašome ir į „sukurtus“ jo neskaičiuojame.
+  // We count only directories/files that are actually created in this run.
+  // Anything that already exists under the root is treated as "skipped"
+  // so the user gets an accurate summary of what changed.
   let createdDirs = 0;
   let createdFiles = 0;
   let skippedDirs = 0;
   let skippedFiles = 0;
 
-  // Sekame, kurie katalogai buvo sukurti šiame generavimo paleidime (case-insensitive)
-  // Tai reikalinga, kad neteisingai neskaičiuotume katalogų kaip praleistų,
-  // jei jie buvo sukurti ankstesnėse eilutėse šiame generavimo paleidime
+  // Track which directories were created in this run (case‑insensitive).
+  // This prevents double‑counting when the same logical directory appears
+  // multiple times in the parsed structure description.
   const createdDirsInThisRun = new Set();
   
-  // Sekame, kurie failai buvo sukurti šiame generavimo paleidime (case-insensitive)
-  // Tai reikalinga, kad neteisingai neskaičiuotume failų kaip praleistų,
-  // jei jie buvo sukurti ankstesnėse eilutėse šiame generavimo paleidime
+  // Track which files were created in this run (case‑insensitive) for the
+  // same reason as `createdDirsInThisRun` above.
   const createdFilesInThisRun = new Set();
 
   try {
     for (const item of parsed) {
-      const dirRelative = item.directory || ''; // pvz. Pro/etc arba ''
+      // Directory path relative to the root (e.g. "src/components" or "").
+      const dirRelative = item.directory || '';
       const dirSegments = dirRelative
         .split('/')
         .map((s) => s.trim())
@@ -255,7 +270,8 @@ ipcMain.handle('generate-structure', (event, { input, rootDir }) => {
 
       const targetDir = path.join(rootResolved, ...dirSegments);
 
-      // Jei bandome išeiti už root ribų – skaičiuojame kaip praleistus tiek katalogą, tiek failus.
+      // If the directory points outside the configured root, we treat both the
+      // directory and all its files as skipped for safety reasons.
       if (!isPathInsideRoot(rootResolved, targetDir)) {
         if (dirRelative) {
           skippedDirs++;
@@ -264,83 +280,90 @@ ipcMain.handle('generate-structure', (event, { input, rootDir }) => {
         continue;
       }
 
-      // Kuriame katalogą tik jei jo dar nėra – taip tiksliai skaičiuojame naujai sukurtus katalogus.
-      // Jei katalogas jau egzistuoja – skaičiuojame kaip praleistą (jei tai ne root katalogas).
+      // Only create a directory if it does not already exist. This guarantees
+      // that the "created" / "skipped" counters are accurate and that we never
+      // overwrite existing content.
       if (dirRelative) {
-        // Tik jei tai ne root katalogas (turi būti kelias)
-        // Windows'e fs.existsSync() jau yra case-insensitive, bet patikrinsime tiksliau
+        // Non‑empty relative path means this is not the root itself.
+        // We still use a case‑insensitive existence check helper for robustness.
         const existingPath = findExistingPathCaseInsensitive(targetDir);
         const dirExists = existingPath !== null;
         
-        // Patikrinkime, ar šis katalogas buvo sukurtas šiame generavimo paleidime
+        // Check whether this exact directory was already created in this run.
         const dirKey = targetDir.toLowerCase();
         const wasCreatedInThisRun = createdDirsInThisRun.has(dirKey);
         
         if (!dirExists) {
-          // Prieš kurdami, patikrinkime visus tarpinius katalogus ir nustatykime, kurie jau egzistavo
-          // Kiekvienas katalogas tikrinamas pagal savo pilną kelią (pvz., "pro" ir "oni/pro" yra skirtingi)
+          // Before creating the final directory, walk through all intermediate
+          // segments and determine which of them already existed beforehand.
+          // Each path segment is treated separately (e.g. "pro" vs "oni/pro").
           let currentPath = rootResolved;
           for (const segment of dirSegments) {
             currentPath = path.join(currentPath, segment);
             const currentKey = currentPath.toLowerCase();
-            
-            // Patikrinkime, ar šis katalogas jau buvo sukurtas šiame generavimo paleidime
+
+            // Check if this intermediate directory was already created in this run.
             const wasCurrentCreatedInThisRun = createdDirsInThisRun.has(currentKey);
             
             if (!wasCurrentCreatedInThisRun) {
-              // Patikrinkime, ar šis katalogas jau egzistavo prieš šį generavimo paleidimą
+              // Check if the directory existed *before* this run. If it did,
+              // we count it as skipped rather than created.
               const currentExists = findExistingPathCaseInsensitive(currentPath) !== null;
               
               if (currentExists) {
-                // Katalogas jau egzistavo prieš šį generavimo paleidimą – skaičiuojame kaip praleistą
+                // Directory existed before this run – treat it as skipped.
                 skippedDirs++;
-                createdDirsInThisRun.add(currentKey); // Pažymime, kad jis jau buvo
+                // Mark it as seen so we do not re‑evaluate it again later.
+                createdDirsInThisRun.add(currentKey);
               }
             }
           }
           
-          // Dabar sukuriame visą kelią (su visais tarpiniais)
+          // Now create the entire directory tree (including intermediates).
           fs.mkdirSync(targetDir, { recursive: true });
           
-          // Skaičiuojame visus katalogus, kurie buvo sukurti (tiek tarpinius, tiek pagrindinį)
+          // Count every directory that was actually created in this run
+          // (both intermediate and final directories).
           currentPath = rootResolved;
           for (const segment of dirSegments) {
             currentPath = path.join(currentPath, segment);
             const currentKey = currentPath.toLowerCase();
-            
-            // Patikrinkime, ar šis katalogas jau buvo sukurtas šiame generavimo paleidime
+
+            // Skip counting if we have already marked this directory as created.
             const wasCurrentCreatedInThisRun = createdDirsInThisRun.has(currentKey);
             
             if (!wasCurrentCreatedInThisRun) {
-              // Katalogas buvo sukurtas dabar – skaičiuojame jį
+              // Directory was just created now – increase the counter.
               createdDirs++;
               createdDirsInThisRun.add(currentKey);
             }
           }
         } else if (!wasCreatedInThisRun) {
-          // Katalogas jau egzistavo prieš šį generavimo paleidimą
-          // Skaičiuojame VISUS katalogus (tiek tarpinius, tiek pagrindinį) kaip praleistus, jei jie jau egzistavo
+          // The directory (in some casing) already existed before this run.
+          // We walk through all its segments and count them as skipped if they
+          // were pre‑existing but not yet recorded in `createdDirsInThisRun`.
           let currentPath = rootResolved;
           for (const segment of dirSegments) {
             currentPath = path.join(currentPath, segment);
             const currentKey = currentPath.toLowerCase();
-            
-            // Patikrinkime, ar šis katalogas jau buvo sukurtas šiame generavimo paleidime
+
+            // If this directory was created earlier in this run, skip it.
             const wasCurrentCreatedInThisRun = createdDirsInThisRun.has(currentKey);
             
             if (!wasCurrentCreatedInThisRun) {
-              // Patikrinkime, ar šis katalogas jau egzistavo prieš šį generavimo paleidimą
+              // Directory existed before this run – count it as skipped and
+              // mark as seen so we don't re‑evaluate it again.
               const currentExists = findExistingPathCaseInsensitive(currentPath) !== null;
               
               if (currentExists) {
-                // Katalogas jau egzistavo prieš šį generavimo paleidimą – skaičiuojame kaip praleistą
                 skippedDirs++;
-                createdDirsInThisRun.add(currentKey); // Pažymime, kad jis jau buvo
+                createdDirsInThisRun.add(currentKey);
               }
             }
           }
         }
-        // Jei katalogas buvo sukurtas šiame paleidime, nieko nedarome (jau suskaičiuotas)
+        // If the directory was already created in this run, do nothing here
+        // – it has already been properly counted.
       }
 
       for (const fileName of item.files) {
@@ -354,21 +377,23 @@ ipcMain.handle('generate-structure', (event, { input, rootDir }) => {
         // Patikrinkime, ar šis failas buvo sukurtas šiame generavimo paleidime
         const fileKey = targetFile.toLowerCase();
         const wasFileCreatedInThisRun = createdFilesInThisRun.has(fileKey);
-        
-        // Jei failas jau egzistuoja (case-insensitive) – jo neperrašome ir skaičiuojame kaip praleistą.
+
+        // If the file already exists (case‑insensitive), we never overwrite it
+        // and instead count it as skipped so the user knows why it was ignored.
         const existingFilePath = findExistingPathCaseInsensitive(targetFile);
         if (existingFilePath !== null && !wasFileCreatedInThisRun) {
-          // Failas jau egzistavo prieš šį generavimo paleidimą – skaičiuojame kaip praleistą
+          // File existed before this run – mark as skipped.
           skippedFiles++;
           continue;
         }
         
-        // Jei failas buvo sukurtas šiame paleidime, nieko nedarome (jau suskaičiuotas)
+        // If the file was already created earlier in this run, skip it – it
+        // has already been counted in `createdFiles`.
         if (wasFileCreatedInThisRun) {
           continue;
         }
 
-        // Tuščias failas – kuriame tik jei tokio dar nėra
+        // Create an empty file only when it does not exist yet.
         fs.writeFileSync(targetFile, '', { encoding: 'utf-8' });
         createdFiles++;
         createdFilesInThisRun.add(fileKey);

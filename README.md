@@ -4,7 +4,7 @@
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)
 ![Electron](https://img.shields.io/badge/Electron-39.2.4-47848F?logo=electron)
 ![Node](https://img.shields.io/badge/Node.js-LTS-green?logo=node.js)
-![Version](https://img.shields.io/badge/version-1.1.0-orange.svg)
+![Version](https://img.shields.io/badge/version-1.1.1-orange.svg)
 
 **🇱🇹 [Lietuvių kalba](#lietuvių-kalba) | 🇬🇧 [English](#english)**
 

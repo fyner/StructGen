@@ -1,8 +1,71 @@
-const { ipcRenderer } = require('electron');
-const { parseStructureInput } = require('../src/parser');
+// Local copy of parseStructureInput because we cannot use `require` in a
+// context‑isolated renderer. Keep this implementation in sync with `src/parser.js`.
+function parseStructureInput(raw) {
+  if (!raw || typeof raw !== 'string') {
+    return [];
+  }
+
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  const result = [];
+
+  for (const line of lines) {
+    const colonIndex = line.indexOf(':');
+
+    if (colonIndex >= 0) {
+      // Format: "path: file1, file2" OR only files at root: ": file1, file2"
+      const pathPart = line
+        .slice(0, colonIndex)
+        .trim();
+      const filesPart = line
+        .slice(colonIndex + 1)
+        .trim();
+
+      const files = filesPart
+        .split(',')
+        .map((f) => f.trim())
+        .filter((f) => f.length > 0);
+
+      // Only files at the root level (no directory path before the colon)
+      if (!pathPart && files.length > 0) {
+        result.push({
+          directory: '',
+          files
+        });
+        continue;
+      }
+
+      if (!pathPart) {
+        // No directory path and no files – ignore this line as invalid noise.
+        continue;
+      }
+
+      // Directory with an optional list of files (may be empty).
+      result.push({
+        directory: pathPart,
+        files
+      });
+    } else {
+      // Directory path only, without any files on this line
+      const pathOnly = line.trim();
+      if (!pathOnly) continue;
+
+      result.push({
+        directory: pathOnly,
+        files: []
+      });
+    }
+  }
+
+  return result;
+}
 
 let translations = {};
-let availableLanguages = []; // Bus užkrauta automatiškai
+// Will be populated from the main process based on JSON files in /locales
+let availableLanguages = [];
 let currentSettings = {
   rootDir: '',
   language: '',
@@ -11,7 +74,8 @@ let currentSettings = {
 
 const MAX_INPUT_CHARS = 1000;
 
-// Input reikšmės sekimas, kad neberenderintume seno turinio
+// Track last rendered input value so we do not re‑render the preview
+// when the text has not actually changed.
 let lastRenderedInput = '';
 
 function formatTemplate(template, values) {
@@ -21,42 +85,50 @@ function formatTemplate(template, values) {
 }
 
 async function loadSettingsAndTranslations() {
-  // Pirmiausia užkrauname prieinamas kalbas
-  availableLanguages = await ipcRenderer.invoke('get-available-languages');
+  // Guard against preload failures – without `electronAPI` we cannot talk
+  // to the main process, so we just log and bail out.
+  if (!window.electronAPI) {
+    console.error('electronAPI is not available');
+    return;
+  }
+
+  // Step 1: load the list of available languages from the main process
+  availableLanguages = await window.electronAPI.getAvailableLanguages();
   
-  // Jei nėra kalbų, paslėpiame kalbų pasirinkimo mygtuką
+  // If there are no languages at all, hide the language switcher UI
   const headerLangContainer = document.querySelector('.header-lang');
   if (headerLangContainer) {
     headerLangContainer.style.display = availableLanguages.length > 0 ? '' : 'none';
   }
   
-  // Dinamiškai generuojame kalbų meniu (tik jei yra kalbų)
+  // If we do have languages – build the dropdown UI and load settings
   if (availableLanguages.length > 0) {
     await generateLanguageMenu();
     
-    currentSettings = await ipcRenderer.invoke('get-settings');
-    // Patikriname, ar dabartinė kalba yra prieinamų kalbų sąraše
+    currentSettings = await window.electronAPI.getSettings();
+    // Check if the language stored in settings is still present in the locales list
     const currentLangCode = currentSettings.language;
     const langExists = availableLanguages.some(lang => {
       const code = typeof lang === 'string' ? lang : lang.code;
       return code === currentLangCode;
     });
     
-    // Jei nustatymuose nėra kalbos arba kalba neegzistuoja, naudojame pirmąją iš sąrašo
+    // Fallback: if the current language is missing, use the first available one
     const firstLang = availableLanguages[0];
     const firstLangCode = typeof firstLang === 'string' ? firstLang : firstLang.code;
     const lang = langExists ? currentLangCode : firstLangCode;
     
-    translations = await ipcRenderer.invoke('get-translations', lang);
+    translations = await window.electronAPI.getTranslations(lang);
     
-    // Atnaujiname nustatymus, jei kalba pasikeitė
+    // Persist the chosen language back to settings if it changed
     if (currentSettings.language !== lang) {
       currentSettings.language = lang;
-      await ipcRenderer.invoke('save-settings', currentSettings);
+      await window.electronAPI.saveSettings(currentSettings);
     }
   } else {
-    // Jei nėra kalbų, užkrauname tik nustatymus
-    currentSettings = await ipcRenderer.invoke('get-settings');
+    // When there are no locale files, we still load settings and continue with
+    // an empty translations object – UI falls back to hard‑coded strings.
+    currentSettings = await window.electronAPI.getSettings();
     translations = {}; // Tuščias vertimų objektas
   }
   
@@ -68,23 +140,24 @@ async function generateLanguageMenu() {
   const headerLangMenu = document.getElementById('header-language-menu');
   if (!headerLangMenu) return;
   
-  // Išvalome esamą meniu
+  // Clear any existing items to rebuild the list from scratch
   headerLangMenu.innerHTML = '';
   
-  // Generuojame meniu elementus kiekvienai kalbai
+  // Create a button for each language returned from the main process
   for (const langInfo of availableLanguages) {
-    const langCode = langInfo.code || langInfo; // Palaikome atgalinį suderinamumą
+    const langCode = langInfo.code || langInfo; // Backwards compatibility with old string‑based format
     const option = document.createElement('button');
     option.className = 'header-lang-option';
     option.setAttribute('data-lang', langCode);
     
-    // Gauname kalbos pavadinimą (pilną, ne kodą)
+    // Ask the main process for a human‑readable language name (not just the code)
     try {
-      const languageName = await ipcRenderer.invoke('get-language-name', langCode);
-      option.textContent = languageName; // Rodome pilną kalbos pavadinimą
+      const languageName = await window.electronAPI.getLanguageName(langCode);
+      option.textContent = languageName; // Display full language name in the dropdown
     } catch (err) {
       console.error('Failed to get language name', err);
-      option.textContent = (typeof langCode === 'string' ? langCode : langCode.code || '').toUpperCase(); // Fallback į kodą
+      // Fallback: use the language code in upper‑case if the name cannot be resolved
+      option.textContent = (typeof langCode === 'string' ? langCode : langCode.code || '').toUpperCase();
     }
     
     headerLangMenu.appendChild(option);
@@ -113,7 +186,7 @@ function applyTheme() {
 function applyTranslations() {
   if (!translations || !translations.main || !translations.app) return;
 
-  // Electron lango pavadinimas turi būti visada „StructGen“ ir nesikeisti nuo kalbos
+  // The Electron window title should always be "StructGen" and not be localized
   document.title = 'StructGen';
 
   const inputLabelEl = document.getElementById('input-label');
@@ -137,13 +210,13 @@ function applyTranslations() {
   const charCountEl = document.getElementById('char-count');
 
   if (inputLabelEl) inputLabelEl.textContent = translations.main.inputLabel;
-  // Placeholder nenaudojame – paliekame švarų lauką be pagalbinio teksto
+  // We intentionally keep the textarea placeholder empty for a cleaner look
   if (inputEl) {
     inputEl.placeholder = '';
   }
   if (generateBtn) generateBtn.textContent = translations.main.generateButton;
   if (clearBtn) clearBtn.textContent = translations.main.clearButton;
-  // Nav mygtukai su spalvotomis SVG ikonomis
+  // Navigation buttons are pure SVG icons; labels live in the info modal
   if (navSettings) {
     navSettings.innerHTML = `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="nav-icon">
       <path d="M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" fill="#4a6cf7"/>
@@ -158,7 +231,7 @@ function applyTranslations() {
     </svg>`;
   }
 
-  // Settings modal tekstai
+  // Settings modal copy
   if (settingsTitle && translations.settings) settingsTitle.textContent = translations.settings.windowTitle;
   if (rootLabel && translations.settings) rootLabel.textContent = translations.settings.rootDirLabel;
   if (chooseRootBtn && translations.settings) chooseRootBtn.textContent = translations.settings.chooseRootButton;
@@ -167,12 +240,12 @@ function applyTranslations() {
     rootInput.placeholder = translations.settings.rootDirPlaceholder;
   }
 
-  // Info modal - formatuojame su SVG ikonoms ir gražesniu dizainu
+  // Info modal – rich formatting with SVG icons and live structure previews
   if (infoTitle && translations.info) infoTitle.textContent = translations.info.title;
   if (infoContent && translations.info) {
     const body = translations.info.body;
     
-    // SVG ikonos su spalvomis - naudojame emoji kaip raktus
+    // SVG icons keyed by the emoji that appears at the beginning of each section line
     const icons = {
       '📝': `<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" class="info-icon">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" fill="#3b82f6" fill-opacity="0.1" stroke="#3b82f6" stroke-width="2"/>
@@ -210,22 +283,22 @@ function applyTranslations() {
       </svg>`
     };
     
-    // Funkcija, kuri randa emoji eilutės pradžioje
+    // Detect an emoji at the beginning of a line that matches one of the icon keys
     function findEmojiAtStart(text) {
-      // Tikriname visus galimus emoji
+      // Check all supported emojis
       for (const emoji of Object.keys(icons)) {
         if (text.startsWith(emoji)) {
           return emoji;
         }
       }
-      // Tikriname emoji su variation selector (⚠️ = ⚠ + FE0F)
+      // Special‑case the warning emoji with a variation selector (⚠️ = ⚠ + FE0F)
       if (text.startsWith('⚠')) {
         return '⚠️';
       }
       return null;
     }
     
-    // Funkcija, kuri struktūros pavyzdžius atvaizduoja kaip peržiūrą su paveikslėliais
+    // Render a textual structure example into a visual tree preview with folder/file icons
     function renderStructurePreview(structureText) {
       try {
         const items = parseStructureInput(structureText);
@@ -239,13 +312,13 @@ function applyTranslations() {
           const fileIndentStyle = `padding-left: ${(indent + 1) * 14}px;`;
           let html = '';
           
-          // Katalogas
+          // Directory line
           html += `<div class="info-preview-dir" style="${indentStyle}"><span class="info-preview-icon">📁</span>${name}</div>`;
           
-          // Surinkti visus vaikus (katalogus ir failus) kartu rūšiavimui
+          // Collect all children (sub‑directories and files) for unified sorting
           const allChildren = [];
           
-          // Vidiniai katalogai
+          // Nested directories
           const childNames = Object.keys(node.children).sort((a, b) => 
             a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true })
           );
@@ -253,7 +326,7 @@ function applyTranslations() {
             allChildren.push({ type: 'dir', name: childName, node: node.children[childName] });
           }
           
-          // Failai
+          // Files in this directory
           const sortedFiles = [...node.files].sort((a, b) => 
             a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true })
           );
@@ -261,7 +334,7 @@ function applyTranslations() {
             allChildren.push({ type: 'file', name: file });
           }
           
-          // Rūšiuoti: katalogai pirmiau, tada failai (abu pagal abėcėlę)
+          // Sort: directories first, then files, both alphabetically (case‑insensitive)
           allChildren.sort((a, b) => {
             if (a.type !== b.type) {
               return a.type === 'dir' ? -1 : 1;
@@ -269,7 +342,7 @@ function applyTranslations() {
             return a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
           });
           
-          // Atvaizduoti visus vaikus
+          // Render all children in the computed order
           for (const child of allChildren) {
             if (child.type === 'dir') {
               html += renderBranch(child.name, child.node, indent + 1);
@@ -281,10 +354,10 @@ function applyTranslations() {
           return html;
         }
         
-        // Surinkti root elementus (katalogus ir failus) kartu rūšiavimui
+        // Collect root‑level directories and files together for sorting
         const rootChildren = [];
         
-        // Root katalogai
+        // Root‑level directories
         const rootChildNames = Object.keys(tree.children).sort((a, b) => 
           a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true })
         );
@@ -292,7 +365,7 @@ function applyTranslations() {
           rootChildren.push({ type: 'dir', name: childName, node: tree.children[childName] });
         }
         
-        // Root failai
+        // Root‑level files
         const sortedRootFiles = [...tree.files].sort((a, b) => 
           a.localeCompare(b, undefined, { sensitivity: 'base', numeric: true })
         );
@@ -300,7 +373,7 @@ function applyTranslations() {
           rootChildren.push({ type: 'file', name: file });
         }
         
-        // Rūšiuoti: katalogai pirmiau, tada failai (abu pagal abėcėlę)
+        // Sort: directories first, then files, both alphabetically
         rootChildren.sort((a, b) => {
           if (a.type !== b.type) {
             return a.type === 'dir' ? -1 : 1;
@@ -308,7 +381,7 @@ function applyTranslations() {
           return a.name.localeCompare(b.name, undefined, { sensitivity: 'base', numeric: true });
         });
         
-        // Atvaizduoti root elementus
+        // Render the root‑level items
         for (const child of rootChildren) {
           if (child.type === 'dir') {
             previewHtml += renderBranch(child.name, child.node, 0);
@@ -324,13 +397,14 @@ function applyTranslations() {
       }
     }
     
-    // Funkcija, kuri patikrina, ar eilutė yra struktūros pavyzdys
+    // Check whether a line looks like a structure example (used for formatting)
     function isStructureExample(line) {
-      // Struktūros pavyzdys turi dvitaškį arba yra tik failų/katalogų pavadinimas
+      // A structure example either contains ':' or is a bare path / file list
       return line.includes(':') || /^[a-zA-Z0-9_\-./]+$/.test(line.trim());
     }
     
-    // Formatavimas su SVG ikonoms
+    // Main formatter: walk through every line of the info text and build
+    // a structured HTML representation with sections, lists and examples.
     const lines = body.split('\n');
     let htmlContent = '';
     let inSection = false;
@@ -346,18 +420,19 @@ function applyTranslations() {
       if (!line) {
         // Jei buvome pavyzdyje ir jau turime eilučių, patikrinti ar reikia uždaryti
         if (inExample && exampleLines.length > 0) {
-          // Patikrinti, ar po tuščios eilutės yra dar pavyzdžio eilutė arba kita sekcija
+          // For an empty line while inside an example, look ahead to see if the
+          // example continues or if we should close the current block.
           let shouldClose = true;
           for (let j = i + 1; j < lines.length; j++) {
             const nextLine = lines[j].trim();
-            if (!nextLine) continue; // Tęsti, jei tuščia eilutė
-            // Jei rasta kita sekcija arba sąrašo elementas, uždaryti
+            if (!nextLine) continue; // Skip additional empty lines
+            // If we hit another section or list item, we close the example
             if (findEmojiAtStart(nextLine) || nextLine.startsWith('-') || nextLine.startsWith('•') ||
                 (nextLine.toLowerCase().includes('pavyzdys') || nextLine.toLowerCase().includes('example') ||
                  nextLine.toLowerCase().includes('variantas') || nextLine.toLowerCase().includes('variant'))) {
               break;
             }
-            // Jei rasta pavyzdžio eilutė, ne uždaryti
+            // If we see another structure example line, keep the block open
             if (isStructureExample(nextLine)) {
               shouldClose = false;
               break;
@@ -374,17 +449,17 @@ function applyTranslations() {
         }
         
         if (inSection && i < lines.length - 1 && !inExample) {
-          // Tuščia eilutė tarp sekcijų - uždaryti sekciją (bet ne jei esame pavyzdyje)
+          // Empty line between sections – close the current section
           htmlContent += '</div></div>';
           inSection = false;
         }
         continue;
       }
       
-      // Tikriname, ar eilutė prasideda su emoji
+      // Section line that starts with an emoji icon
       const emoji = findEmojiAtStart(line);
       if (emoji) {
-        // Jei buvome pavyzdyje, uždaryti jį prieš uždarant sekciją
+        // If we were inside an example, close it before starting the new section
         if (inExample && exampleLines.length > 0) {
           const exampleText = exampleLines.join('\n');
           htmlContent += `<div class="info-example-input">${exampleText}</div>`;
@@ -393,32 +468,32 @@ function applyTranslations() {
           inExample = false;
         }
         
-        // Uždaryti ankstesnę sekciją, jei yra
+        // Close any previous section before starting a new one
         if (inSection) {
           htmlContent += '</div></div>';
           inSection = false;
         }
         
-        // Ištraukti antraštę (pašalinti emoji ir skaičių, jei yra)
+        // Extract the textual section title (strip emoji and optional numbering)
         let title = line.substring(emoji.length).trim();
-        // Pašalinti skaičių pradžioje (pvz., "1. " arba "2. ")
+        // Remove a leading number like "1. " or "2. " from the title
         title = title.replace(/^\d+\.\s*/, '');
         
-        // Patikrinti, ar po šios sekcijos yra tik struktūros pavyzdžiai (iki kitos sekcijos arba sąrašo)
+        // Look ahead to determine whether this section contains only examples
         let sectionHasOnlyExamples = false;
         let hasNonExampleContent = false;
         for (let j = i + 1; j < lines.length; j++) {
           const checkLine = lines[j].trim();
           if (!checkLine) continue;
-          // Jei rasta kita sekcija arba sąrašo elementas, sustoti
+          // Stop when the next section or list item is reached
           if (findEmojiAtStart(checkLine) || checkLine.startsWith('-') || checkLine.startsWith('•')) {
             break;
           }
-          // Jei rasta struktūros pavyzdžio eilutė
+          // Structure example line – mark that the section has examples
           if (isStructureExample(checkLine)) {
             sectionHasOnlyExamples = true;
           } else {
-            // Jei rasta ne pavyzdžio eilutė, sekcija turi ne tik pavyzdžius
+            // Non‑example content – the section has more than just examples
             hasNonExampleContent = true;
             break;
           }
@@ -426,7 +501,7 @@ function applyTranslations() {
         
         const icon = icons[emoji] || icons['⚠️'] || '';
         
-        // Jei sekcija turi tik pavyzdžius (ir nėra kitų elementų), formatuoti kaip pavyzdį
+        // If the section is composed purely of examples, render as an example block
         if (sectionHasOnlyExamples && !hasNonExampleContent) {
           htmlContent += `<div class="info-example-wrapper"><div class="info-example-title">${title}</div>`;
           inExample = true;
@@ -440,7 +515,7 @@ function applyTranslations() {
       } else if ((line.toLowerCase().includes('pavyzdys') || line.toLowerCase().includes('example') || 
                   line.toLowerCase().includes('variantas') || line.toLowerCase().includes('variant')) && 
                  (line.toLowerCase().includes(':') || /^\d+/.test(line))) {
-        // Pavyzdžio/varianto antraštė (pvz., "Pavyzdys 1:", "Variantas 1:", "Example 1:", "Variant 1:")
+        // Example/variant heading line (e.g. "Example 1:", "Variant 1:" etc.)
         exampleTitle = line;
         htmlContent += `<div class="info-example-wrapper"><div class="info-example-title">${line}</div>`;
         inExample = true;
@@ -448,10 +523,10 @@ function applyTranslations() {
       } else if (inExample && isStructureExample(line) && 
                  !line.toLowerCase().includes('pavyzdys') && !line.toLowerCase().includes('example') &&
                  !line.toLowerCase().includes('variantas') && !line.toLowerCase().includes('variant')) {
-        // Struktūros pavyzdžio eilutė (tiek variantuose, tiek sekcijose su tik pavyzdžiais)
+        // Structure example line (for both explicit examples and example‑only sections)
         exampleLines.push(line);
       } else if (line.startsWith('-') || line.startsWith('•')) {
-        // Jei buvome pavyzdyje, uždaryti jį
+        // Start of a bullet list item; close any open example block first
         if (inExample && exampleLines.length > 0) {
           const exampleText = exampleLines.join('\n');
           htmlContent += `<div class="info-example-input">${exampleText}</div>`;
@@ -459,31 +534,32 @@ function applyTranslations() {
           exampleLines = [];
           inExample = false;
         }
-        // Sąrašo elementai
+        // Plain list item
         const text = line.replace(/^[-•]\s*/, '');
         htmlContent += `<div class="info-list-item">${text}</div>`;
         isIntro = false;
       } else if (inSection && !inExample) {
-        // Patikrinti, ar tai struktūros pavyzdžio eilutė
+        // Inside a regular section – check whether the line is a structure example
         if (isStructureExample(line)) {
-          // Pradėti naują pavyzdį sekcijoje - naudoti sekcijos antraštę kaip pavyzdžio antraštę
+          // Start a new example block inside this section and reuse the section
+          // title as the example heading.
           const sectionTitle = htmlContent.match(/<div class="info-section-title">.*?<span>(.*?)<\/span>/);
           const exampleTitleText = sectionTitle ? sectionTitle[1] : '';
           htmlContent += `<div class="info-example-wrapper"><div class="info-example-title">${exampleTitleText}</div>`;
           inExample = true;
           exampleLines.push(line);
         } else {
-          // Paprastas tekstas sekcijoje (ne pavyzdys)
+          // Regular text inside the section
           htmlContent += `<div class="info-text-line">${line}</div>`;
         }
         isIntro = false;
       } else if (isIntro) {
-        // Tekstas pradžioje (intro)
+        // Intro text before any sections have started
         htmlContent += `<div class="info-intro">${line}</div>`;
       }
     }
     
-    // Jei liko neuždarytas pavyzdys, uždaryti jį
+    // Close a pending example block if we reached the end
     if (inExample && exampleLines.length > 0) {
       const exampleText = exampleLines.join('\n');
       htmlContent += `<div class="info-example-input">${exampleText}</div>`;
@@ -492,7 +568,7 @@ function applyTranslations() {
       inExample = false;
     }
     
-    // Uždaryti sekciją, jei liko neuždaryta
+    // Close an open section if it is still active
     if (inSection) htmlContent += '</div></div>';
     
     infoContent.innerHTML = htmlContent || body;
@@ -554,7 +630,7 @@ function updateCharCount() {
 
   let template = '{used} / {max}';
   if (translations && translations.main && translations.main.charCountLabel) {
-    // Pvz.: "Simboliai: {used} / {max}"
+    // Example: "Characters: {used} / {max}"
     template = translations.main.charCountLabel;
   }
 
@@ -600,16 +676,16 @@ function buildStructureTree(items) {
   return root;
 }
 
-// Surinkti visus katalogų ir failų kelius iš struktūros medžio
+// Collect all directory and file paths from the structure tree
 function collectAllPaths(tree, rootDir = '', paths = []) {
-  // Katalogai
+  // Directories
   for (const [dirName, dirNode] of Object.entries(tree.children)) {
     const dirPath = rootDir ? `${rootDir}/${dirName}` : dirName;
     paths.push(dirPath);
     collectAllPaths(dirNode, dirPath, paths);
   }
 
-  // Failai
+  // Files
   for (const fileName of tree.files) {
     const filePath = rootDir ? `${rootDir}/${fileName}` : fileName;
     paths.push(filePath);
@@ -655,7 +731,7 @@ async function renderStructurePreview() {
 
   const currentInput = inputEl.value;
   
-  // Jei input nepasikeitė, nieko nedarome
+  // If the input hasn't changed, avoid unnecessary re‑render work
   if (currentInput === lastRenderedInput) {
     return;
   }
@@ -664,7 +740,7 @@ async function renderStructurePreview() {
 
   const items = parseStructureInput(currentInput);
   
-  // Išvalome preview prieš renderinant
+  // Clear the preview container before rendering new content
   previewEl.innerHTML = '';
 
   if (!items.length) {
@@ -681,22 +757,23 @@ async function renderStructurePreview() {
   const treeUl = document.createElement('ul');
   treeUl.classList.add('preview-tree');
 
-  // Surinkti visus kelius ir patikrinti, kurie egzistuoja (jei rootDir nustatytas)
+  // Gather all relative paths and ask the main process which of them exist
   let existingPaths = {};
   if (currentSettings.rootDir) {
     try {
       const allPaths = collectAllPaths(tree);
-      existingPaths = await ipcRenderer.invoke('check-paths-exist', {
+      existingPaths = await window.electronAPI.checkPathsExist({
         rootDir: currentSettings.rootDir,
         paths: allPaths
       });
     } catch (err) {
       console.error('check-paths-exist failed', err);
-      // Tęsiame be egzistavimo tikrinimo
+      // Even if the existence check fails, we still render a plain tree
     }
   }
 
-  // Patikriname, ar input vis dar tas pats (gali būti pasikeitęs per async operaciją)
+  // Double‑check that the input is still the same (it might have changed
+  // while we were waiting for the async `check-paths-exist` response).
   if (inputEl.value !== currentInput) {
     return; // Input pasikeitė, neberenderiname
   }
@@ -736,7 +813,7 @@ async function onGenerateClick() {
   generateBtn.classList.add('is-loading');
 
   try {
-    const result = await ipcRenderer.invoke('generate-structure', {
+    const result = await window.electronAPI.generateStructure({
       input,
       rootDir: currentSettings.rootDir
     });
@@ -787,7 +864,7 @@ function closeModal(id) {
 }
 
 async function onOpenSettingsClick() {
-  // užkrauname dabartinius nustatymus į UI prieš rodydami
+  // Pre‑fill the settings modal with the current root directory before showing it
   const rootInput = document.getElementById('root-dir-display');
   if (rootInput) rootInput.value = currentSettings.rootDir || '';
   
@@ -812,13 +889,13 @@ function onClearClick() {
       : translations.main.statusNoRoot || '';
   }
 
-  // atnaujiname peržiūrą – parodome tuščią būseną
+  // Re‑render the preview to show the "empty" helper state
   renderStructurePreview();
 }
 
 async function onChooseRootClick() {
   const rootInput = document.getElementById('root-dir-display');
-  const chosen = await ipcRenderer.invoke('choose-root-directory');
+  const chosen = await window.electronAPI.chooseRootDirectory();
   if (chosen && rootInput) {
     rootInput.value = chosen;
   }
@@ -835,7 +912,7 @@ async function onSaveSettingsClick() {
   };
 
   try {
-    const saved = await ipcRenderer.invoke('save-settings', newSettings);
+    const saved = await window.electronAPI.saveSettings(newSettings);
     currentSettings = saved;
 
     // perkrauname vertimus pagal dabartinę kalbą
@@ -843,7 +920,7 @@ async function onSaveSettingsClick() {
     const firstLangCode = typeof firstLang === 'string' ? firstLang : (firstLang ? firstLang.code : null);
     const lang = currentSettings.language || firstLangCode;
     if (lang) {
-      translations = await ipcRenderer.invoke('get-translations', lang);
+      translations = await window.electronAPI.getTranslations(lang);
     }
     applyTheme();
     applyTranslations();
@@ -860,7 +937,7 @@ async function onSaveSettingsClick() {
 }
 
 async function setLanguage(lang) {
-  // Patikriname, ar kalba yra prieinamų kalbų sąraše
+  // Ensure the requested language exists in the current languages list
   const langExists = availableLanguages.some(langInfo => {
     const code = typeof langInfo === 'string' ? langInfo : langInfo.code;
     return code === lang;
@@ -870,12 +947,13 @@ async function setLanguage(lang) {
     ...currentSettings,
     language: lang
   };
-  const saved = await ipcRenderer.invoke('save-settings', updated);
+  const saved = await window.electronAPI.saveSettings(updated);
   currentSettings = saved;
   const firstLang = availableLanguages[0];
   const firstLangCode = typeof firstLang === 'string' ? firstLang : (firstLang ? firstLang.code : null);
   const newLang = currentSettings.language || firstLangCode;
-  translations = await ipcRenderer.invoke('get-translations', newLang);
+  // Reload the translations bundle for the newly selected language
+  translations = await window.electronAPI.getTranslations(newLang);
   applyTranslations();
 }
 
@@ -885,7 +963,7 @@ async function setTheme(theme) {
     ...currentSettings,
     theme: normalized
   };
-  const saved = await ipcRenderer.invoke('save-settings', updated);
+  const saved = await window.electronAPI.saveSettings(updated);
   currentSettings = saved;
   applyTheme();
 }
@@ -901,6 +979,7 @@ window.addEventListener('DOMContentLoaded', () => {
   const headerLangMenu = document.getElementById('header-language-menu');
   const themeToggleBtn = document.getElementById('theme-toggle');
 
+  // Main action buttons
   if (generateBtn) {
     generateBtn.addEventListener('click', onGenerateClick);
   }
@@ -913,6 +992,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // Top‑nav buttons for settings and info modals
   if (navSettings) {
     navSettings.addEventListener('click', onOpenSettingsClick);
   }
@@ -933,13 +1013,14 @@ window.addEventListener('DOMContentLoaded', () => {
     saveSettingsBtn.addEventListener('click', onSaveSettingsClick);
   }
 
+  // Language picker dropdown open/close handling
   if (headerLangToggle && headerLangMenu) {
     headerLangToggle.addEventListener('click', () => {
       headerLangMenu.classList.toggle('is-open');
     });
   }
 
-  // Event listener'iai kalbų pasirinkimui - naudojame event delegation, kad veiktų su dinamiškai generuojamais elementais
+  // Language selection – use event delegation so dynamically generated items work
   if (headerLangMenu) {
     headerLangMenu.addEventListener('click', async (event) => {
       const opt = event.target.closest('.header-lang-option');
@@ -953,7 +1034,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // uždaryti kalbos meniu paspaudus šalia
+  // Close the language menu when clicking outside of it
   document.addEventListener('click', (event) => {
     const target = event.target;
     if (!headerLangMenu || !headerLangToggle) return;
@@ -961,6 +1042,7 @@ window.addEventListener('DOMContentLoaded', () => {
     headerLangMenu.classList.remove('is-open');
   });
 
+  // Theme toggle – light <-> dark
   if (themeToggleBtn) {
     themeToggleBtn.addEventListener('click', () => {
       const nextTheme = currentSettings.theme === 'dark' ? 'light' : 'dark';
@@ -968,7 +1050,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // modal close buttons
+  // Modal close buttons (X in the header)
   document.querySelectorAll('.modal-close').forEach((btn) => {
     btn.addEventListener('click', () => {
       const id = btn.getAttribute('data-close-modal');
@@ -976,7 +1058,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // uždaryti modalius paspaudus ant foninio blur (išorės)
+  // Close modals when clicking on the blurred backdrop area
   document.querySelectorAll('.modal-backdrop').forEach((backdrop) => {
     backdrop.addEventListener('click', (event) => {
       if (event.target !== backdrop) return;
@@ -988,8 +1070,11 @@ window.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // Initial bootstrap:
+  // 1) load settings + translations
+  // 2) render an empty preview
+  // 3) initialize character counter
   loadSettingsAndTranslations();
-  // pradinė peržiūra (tuščia) ir simbolių skaičius
   renderStructurePreview();
   updateCharCount();
 });

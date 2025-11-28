@@ -28,10 +28,11 @@ body {
   font-family: var(--font-main);
   background: radial-gradient(circle at top left, #eef2ff 0, #f9fafb 40%, #eff6ff 100%);
   color: var(--text-main);
-  overflow: hidden; /* langas nescrollinamas, scrollas tik vidiniuose blokuose */
+  /* The main window itself does not scroll; only inner content areas are scrollable. */
+  overflow: hidden;
 }
 
-/* Dark tema – švelnesnė, pilkšva */
+/* Dark theme – softer, neutral gray palette */
 html[data-theme='dark'] {
   --bg: #2d2d30;
   --bg-elevated: #3e3e42;
@@ -111,7 +112,7 @@ html[data-theme='dark'] .chip-button.active {
   color: #111827;
 }
 
-/* Specifinis spalvinimas temos toggle mygtukui */
+/* Specific styling for the theme toggle button */
 #theme-toggle {
   font-weight: 600;
 }
@@ -124,7 +125,7 @@ html[data-theme='dark'] #theme-toggle {
   color: #facc15;
 }
 
-/* Tamsiame stiliuje temos mygtuko fonas suvienodintas su programos fonu */
+/* In dark mode the theme toggle background is visually merged with the app background */
 html[data-theme='dark'] #theme-toggle.active {
   background: transparent;
 }
@@ -279,10 +280,10 @@ html[data-theme='dark'] .header-lang-option.active {
 
 .app-main {
   display: flex;
-  flex-direction: column; /* sekcijos (įvedimas ir peržiūra) viena po kita, ne vienoje eilutėje */
-  gap: 6px; /* kompaktiškas tarpas tarp sekcijų */
+  flex-direction: column; /* Input and preview sections are stacked vertically, not side‑by‑side */
+  gap: 6px; /* Compact spacing between the main sections */
   flex: 1 1 auto;
-  min-height: 0; /* Leidžia flex vaikams susitraukti */
+  min-height: 0; /* Allows flex children to shrink properly inside the viewport */
 }
 
 .input-section,
@@ -294,7 +295,7 @@ html[data-theme='dark'] .header-lang-option.active {
   border: 1px solid var(--border-subtle);
 }
 
-/* Sekcijos (įvedimo, statuso) automatiškai išsitempia per visą plotį flex stulpe */
+/* Input & status sections automatically stretch to full width in the column layout */
 
 .input-label {
   display: block;
@@ -348,7 +349,7 @@ html[data-theme='dark'] .structure-input:focus {
   box-shadow: 0 0 0 1px var(--accent);
 }
 
-/* Mygtukai – naujas vienodas stilius abiem temoms */
+/* Primary & secondary buttons – consistent styling across light and dark themes */
 .primary-button,
 .secondary-button {
   border-radius: 999px;
@@ -399,7 +400,7 @@ html[data-theme='dark'] .structure-input:focus {
   box-shadow: 0 10px 26px rgba(148, 163, 184, 0.3);
 }
 
-/* Temai jautrūs mygtukų niuansai tamsiam stiliui */
+/* Dark‑theme specific nuances for buttons */
 html[data-theme='dark'] .primary-button {
   background: linear-gradient(135deg, var(--accent), var(--accent-strong));
   color: #ffffff;
@@ -450,7 +451,7 @@ html[data-theme='dark'] .secondary-button.subtle:hover {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  flex-shrink: 0; /* Status header neturėtų susitraukti */
+  flex-shrink: 0; /* Prevent the header from shrinking when the preview grows */
 }
 
 .status-title {
@@ -524,7 +525,7 @@ html[data-theme='dark'] .secondary-button.subtle:hover {
   color: #f59e0b;
 }
 
-/* Egzistuojantys katalogai – oranžinė spalva */
+/* Existing directories are highlighted in orange to distinguish from new ones */
 .preview-dir.existing {
   color: #ea580c;
 }
@@ -547,7 +548,7 @@ html[data-theme='dark'] .secondary-button.subtle:hover {
   color: #3b82f6;
 }
 
-/* Egzistuojantys failai – oranžinė spalva */
+/* Existing files are highlighted in orange to distinguish from new ones */
 .preview-file.existing {
   color: #ea580c;
 }
@@ -556,7 +557,7 @@ html[data-theme='dark'] .secondary-button.subtle:hover {
   color: #f97316;
 }
 
-/* Tamsi tema – peržiūros blokas */
+/* Dark theme – preview container */
 html[data-theme='dark'] .structure-preview {
   background: var(--bg-elevated);
   border-color: var(--border-subtle);
@@ -567,7 +568,7 @@ html[data-theme='dark'] .structure-preview-empty {
   color: var(--text-muted);
 }
 
-/* Tamsi tema – preview elementų spalvos */
+/* Dark theme – preview tree element colors */
 html[data-theme='dark'] .preview-dir {
   color: var(--accent);
 }
@@ -586,7 +587,7 @@ html[data-theme='dark'] .preview-file::before {
   color: #9ca3af;
 }
 
-/* Tamsi tema – egzistuojantys elementai */
+/* Dark theme – existing elements */
 html[data-theme='dark'] .preview-dir.existing {
   color: #fb923c;
 }
@@ -603,7 +604,7 @@ html[data-theme='dark'] .preview-file.existing::before {
   color: #f97316;
 }
 
-/* Tamsi tema – modalai */
+/* Dark theme – modal window appearance */
 html[data-theme='dark'] .modal {
   background: var(--bg-elevated);
   border-color: var(--border-subtle);
@@ -663,7 +664,7 @@ html[data-theme='dark'] .select-input:focus {
   transform: translateY(-1px);
 }
 
-/* Modals */
+/* Modal base layout */
 .modal-backdrop {
   position: fixed;
   inset: 0;
@@ -779,7 +780,7 @@ html[data-theme='dark'] .modal-backdrop {
   white-space: pre-line;
 }
 
-/* Info modal specifiniai stiliai */
+/* Info modal specific styles */
 #info-modal-backdrop .modal-title::before {
   content: '';
   width: 20px;
@@ -895,7 +896,7 @@ html[data-theme='dark'] #info-modal-backdrop .modal-title::before {
   border-bottom: 1px solid var(--border-subtle);
 }
 
-/* Pavyzdžių stiliai */
+/* Example input/preview block styles inside the info modal */
 .info-example-wrapper {
   margin: 16px 0;
   padding: 0;
@@ -1051,7 +1052,7 @@ html[data-theme='dark'] .info-preview-file .info-preview-icon {
   color: #9ca3af;
 }
 
-/* Settings modal specifiniai stiliai */
+/* Settings modal specific styles */
 #settings-modal-backdrop .modal-title::before {
   content: '⚙️';
 }

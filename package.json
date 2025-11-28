@@ -1,7 +1,7 @@
 {
   "name": "structgen",
-  "version": "1.1.0",
-  "description": "Failų ir katalogų struktūros generatorius Windows OS (Electron)",
+  "version": "1.1.1",
+  "description": "Generates folder and file structures from a simple text description",
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
@@ -19,12 +19,15 @@
       "locales/**/*",
       "package.json"
     ],
+    "extraMetadata": {
+      "main": "electron/main.js"
+    },
     "win": {
       "target": "portable",
       "icon": "assets/structgen-icon.ico"
     }
   },
-  "author": "",
+  "author": "Fyner",
   "license": "MIT",
   "devDependencies": {
     "electron": "^39.2.4",
